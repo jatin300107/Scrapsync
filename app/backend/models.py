@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
-
+from uuid import uuid4
 from sqlmodel import JSON, Column, Field, Relationship, SQLModel
 
 
@@ -22,7 +22,6 @@ class Recycler(SQLModel, table=True):
     authorization_details: Optional[str] = None
     contact_info: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
-
     rates: List["RecyclerRate"] = Relationship(back_populates="recycler")
 
 
@@ -31,41 +30,42 @@ class RecyclerRate(SQLModel, table=True):
     recycler_id: int = Field(foreign_key="recycler.id", index=True)
     material_category: str = Field(index=True)
     rate_per_kg: int
-
     recycler: Recycler = Relationship(back_populates="rates")
 
 
 class Lot(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    uuid: str = Field(default_factory=lambda: str(uuid4()), unique=True, index=True)
     collector_id: int = Field(foreign_key="collector.id", index=True)
-    image_ref: str  # S3 key
-    # [{"name": "...", "category": "...", "est_weight_kg": 0.0}, ...]
-    items: List[dict] = Field(default_factory=list, sa_column=Column(JSON))
-    weight_kg: Optional[float] = None
+    image_ref: str  
+    categories: List[dict] = Field(default_factory=list, sa_column=Column(JSON))
+    safety_guidelines: List[dict] = Field(default_factory=list, sa_column=Column(JSON))
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    safety_guidance_text: Optional[str] = None
-    status: str = "created"  # created | matched | accepted
+    status: str = "created"
+    estimated_price: int
     chosen_recycler_id: Optional[int] = Field(default=None, foreign_key="recycler.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class Audit(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    uuid: str = Field(default_factory=lambda: str(uuid4()), unique=True, index=True)
     lot_id: int = Field(foreign_key="lot.id", unique=True, index=True)
     collector_id: int = Field(foreign_key="collector.id")
     recycler_id: int = Field(foreign_key="recycler.id")
-
-    # snapshot at the moment the collector accepts a recycler
-    items: List[dict] = Field(default_factory=list, sa_column=Column(JSON))
-    weight_kg: float
+    categories: List[dict] = Field(default_factory=list, sa_column=Column(JSON))
     estimated_price: int
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-
-    # filled during handover
     agreed_price: Optional[int] = None
     collector_confirmed_at: Optional[datetime] = None
     recycler_confirmed_at: Optional[datetime] = None
-
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class SafetyGuideline(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    material_category: str = Field(index=True)  
+    hazard_type: str
+    rule_text: str
+    source_reference: str 
