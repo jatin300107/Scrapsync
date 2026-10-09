@@ -1,18 +1,23 @@
 import json
 from collections import defaultdict
 from typing import List, Optional
-
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from app.backend.workers.recyclers import build_offer, audit_to_out 
+from app.backend.workers.ors import distances_for
+from app.backend.workers.helpers import iso, recycler_summary , get_lot_or_404
+from app.backend.workers.pricing import eligible_recyclers, all_rates, price_recyclers
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile , Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlmodel import Session, select
+from uuid import uuid4
+from app.backend.constants import CATEGORIES, PAGE_SIZE
 
 from app.backend.constants import CATEGORIES
-from app.backend.db import get_session
-from app.backend.routers.identify_service import IdentificationError, identify_image
+from app.backend.db import get_session , utcnow
+from app.backend.workers.identify_service import IdentificationError, identify_image
 from app.backend.models import Audit, Lot, Recycler, SafetyGuideline
-from .routers.pricing import price_recyclers
-from .routers.schemas import (
+from .workers.pricing import price_recyclers , price_card
+from .workers.schemas import (
     Box,
     CategoryEntry,
     IdentifiedItem,
@@ -21,9 +26,12 @@ from .routers.schemas import (
     OfferOut,
     RecyclerSummary,
     SafetyRule,
+    OfferIn,
+    QuoteIn,
 )
-from .routers.storage import image_url, upload_image
-
+from .workers.storage import image_url, upload_image
+import logging
+logger = logging.getLogger(__name__)
 DEMO_COLLECTOR_ID = 1
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
@@ -128,7 +136,8 @@ def identify(image: UploadFile = File(...)):
     data = read_image(image)
     try:
         detected = identify_image(data)
-    except IdentificationError:
+    except IdentificationError as e:
+        logger.error("Identification failed: %s", e)
         raise HTTPException(502, "Identification service failed")
     return IdentifyOut(
         items=[
@@ -198,3 +207,155 @@ def get_lot(lot_uuid: str, session: Session = Depends(get_session)):
     if not lot:
         raise HTTPException(404, "Lot not found")
     return lot_out(session, lot)
+
+
+@app.get("/lots")
+def list_lots(session: Session = Depends(get_session)):
+    lots = session.exec(
+        select(Lot).where(Lot.collector_id == DEMO_COLLECTOR_ID).order_by(Lot.created_at.desc())
+    ).all()
+    return {"lots": [lot_out(l, session) for l in lots]}
+
+
+
+@app.get("/lots/{lot_uuid}/recyclers")
+def lot_recyclers(lot_uuid: str, page: int = Query(1, ge=1), session: Session = Depends(get_session)):
+    lot = get_lot_or_404(session, lot_uuid)
+    if lot.status != "created":
+        raise HTTPException(409, f"Lot is {lot.status}, recyclers can only be listed when created")
+
+    rows = eligible_recyclers(session, lot.categories)
+    total = len(rows)
+    start = (page - 1) * PAGE_SIZE
+    chunk = rows[start:start + PAGE_SIZE]
+    dists = distances_for(lot.latitude, lot.longitude, [r[0] for r in chunk])  # only this page
+
+    return {
+        "page": page,
+        "page_size": PAGE_SIZE,
+        "total": total,
+        "has_more": start + PAGE_SIZE < total,
+        "recyclers": [
+            {
+                "recycler": recycler_summary(rc),
+                "rate_card_total": rct,
+                "breakdown": breakdown,
+                "distance_km": km,
+                "distance_is_approximate": approx,
+            }
+            for (rc, rct, breakdown), (km, approx) in zip(chunk, dists)
+        ],
+    }
+
+
+@app.post("/lots/{lot_uuid}/offer")
+def offer(lot_uuid: str, body: OfferIn, session: Session = Depends(get_session)):
+    lot = get_lot_or_404(session, lot_uuid)
+    rc = session.get(Recycler, body.recycler_id)
+    if not rc:
+        raise HTTPException(404, "Recycler not found")
+    if lot.status != "created":
+        raise HTTPException(409, f"Lot is {lot.status}, cannot offer")
+    priced = price_recyclers(session, lot.categories).get(rc.id)  # recomputed from current rates
+    if not priced:
+        raise HTTPException(422, "Recycler is not eligible for this lot")
+
+    lot.chosen_recycler_id = rc.id
+    lot.rate_card_total = priced["total"]
+    lot.offered_at = utcnow()
+    lot.status = "offered"
+    session.add(lot)
+    session.commit()
+    session.refresh(lot)
+    return lot_out(lot, session)
+
+
+@app.post("/lots/{lot_uuid}/withdraw")
+def withdraw(lot_uuid: str, session: Session = Depends(get_session)):
+    lot = get_lot_or_404(session, lot_uuid)
+    if lot.status not in ("offered", "quoted"):
+        raise HTTPException(409, f"Lot is {lot.status}, nothing to withdraw")
+    lot.chosen_recycler_id = None
+    lot.rate_card_total = None
+    lot.quoted_price = None
+    lot.offered_at = None
+    lot.quoted_at = None
+    lot.status = "created"
+    session.add(lot)
+    session.commit()
+    session.refresh(lot)
+    return lot_out(lot, session)
+
+
+@app.post("/lots/{lot_uuid}/agree", status_code=201)
+def agree(lot_uuid: str, session: Session = Depends(get_session)):
+    lot = get_lot_or_404(session, lot_uuid)
+    if lot.status != "quoted":
+        raise HTTPException(409, f"Lot is {lot.status}, cannot agree")
+
+    now = utcnow()
+    audit = Audit(
+        uuid=str(uuid4()),
+        lot_id=lot.id,
+        collector_id=lot.collector_id,
+        recycler_id=lot.chosen_recycler_id,
+        categories=lot.categories,          # snapshot
+        rate_card_total=lot.rate_card_total,
+        agreed_price=lot.quoted_price,
+        latitude=lot.latitude,
+        longitude=lot.longitude,
+        recycler_confirmed_at=lot.quoted_at,
+        collector_confirmed_at=now,
+        created_at=now,
+    )
+    lot.status = "closed"
+    session.add(audit)
+    session.add(lot)
+    session.commit()
+    session.refresh(audit)
+    return audit_to_out(audit, session)
+
+
+@app.get("/audits/{audit_uuid}")
+def get_audit(audit_uuid: str, session: Session = Depends(get_session)):
+    audit = session.exec(select(Audit).where(Audit.uuid == audit_uuid)).first()
+    if not audit:
+        raise HTTPException(404, "Audit not found")
+    return audit_to_out(audit, session)
+
+
+# ---------- recycler endpoints ----------
+
+@app.get("/recyclers")
+def list_recyclers(session: Session = Depends(get_session)):
+    rows = session.exec(select(Recycler).order_by(Recycler.id)).all()
+    return [{"id": r.id, "name": r.name, "facility_location": r.facility_location} for r in rows]
+
+
+@app.get("/recyclers/{recycler_id}/offers")
+def recycler_offers(recycler_id: int, session: Session = Depends(get_session)):
+    if not session.get(Recycler, recycler_id):
+        raise HTTPException(404, "Recycler not found")
+    lots = session.exec(
+        select(Lot)
+        .where(Lot.chosen_recycler_id == recycler_id)
+        .where(Lot.status.in_(["offered", "quoted", "closed"]))
+        .order_by(Lot.offered_at.desc())
+    ).all()
+    return {"lots": [lot_out(l, session) for l in lots]}
+
+
+@app.post("/lots/{lot_uuid}/quote")
+def quote(lot_uuid: str, body: QuoteIn, session: Session = Depends(get_session)):
+    lot = get_lot_or_404(session, lot_uuid)
+    if lot.status != "offered":
+        raise HTTPException(409, f"Lot is {lot.status}, cannot quote")
+    if body.recycler_id != lot.chosen_recycler_id:
+        raise HTTPException(403, "This lot was not offered to this recycler")
+    lot.quoted_price = body.price
+    lot.quoted_at = utcnow()
+    lot.status = "quoted"
+    session.add(lot)
+    session.commit()
+    session.refresh(lot)
+    return lot_out(lot, session)

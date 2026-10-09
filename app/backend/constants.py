@@ -14,6 +14,7 @@ CATEGORIES = {
 CATEGORY_KEYS = list(CATEGORIES.keys())
 
 
+PAGE_SIZE = 5
 def normalize_category(raw: str) -> str:
     """Force any model output into a valid key."""
     key = (raw or "").strip().lower().replace(" ", "_")

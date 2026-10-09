@@ -4,6 +4,14 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
+class OfferIn(BaseModel):
+    recycler_id: int
+
+
+class QuoteIn(BaseModel):
+    recycler_id: int
+    price: int = Field(ge=1)
+    
 class Box(BaseModel):
     x: float
     y: float

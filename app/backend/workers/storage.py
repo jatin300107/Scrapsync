@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-_BUCKET = os.environ["S3_BUCKET"]
+_BUCKET = os.environ["S3_BUCKET_NAME"]
 _s3 = boto3.client(
     "s3",
     region_name=os.environ.get("AWS_REGION"),
