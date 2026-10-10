@@ -1,0 +1,729 @@
+/* ============================================================
+   Kabadiwala Connect — style.css
+   Accessibility-first, low-literacy mobile design
+   Target: 360px wide, max-width 480px
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap');
+
+/* ── RESET & BOX MODEL ─────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── DESIGN TOKENS ─────────────────────────────────────────── */
+:root {
+  /* Colours */
+  --bg:           #FFF8E7;
+  --text:         #1B1B1B;
+  --primary:      #1B5E20;
+  --primary-text: #FFFFFF;
+  --secondary-bg: #FFFFFF;
+  --secondary-bd: #1B5E20;
+  --warning-bg:   #FFE8B0;
+  --warning-text: #5A3600;
+  --error:        #B00020;
+  --card-bd:      #1B1B1B;
+  --muted-bg:     #F0EAD6;
+  --price-color:  #1B5E20;
+  --status-created-bg:  #E8F5E9;
+  --status-created-txt: #1B5E20;
+  --status-offered-bg:  #E3F2FD;
+  --status-offered-txt: #0D47A1;
+  --status-quoted-bg:   #FFF3E0;
+  --status-quoted-txt:  #E65100;
+  --status-closed-bg:   #F3E5F5;
+  --status-closed-txt:  #4A148C;
+
+  /* Typography */
+  --font: 'Noto Sans Devanagari', 'Segoe UI', Arial, sans-serif;
+  --base:    20px;
+  --btn:     22px;
+  --heading: 28px;
+  --price:   40px;
+  --small:   17px;
+  --lh:      1.5;
+
+  /* Spacing */
+  --gap:   12px;
+  --gap-l: 20px;
+  --pad:   16px;
+  --radius: 8px;
+
+  /* Targets */
+  --tap: 56px;
+}
+
+/* ── BASE ───────────────────────────────────────────────────── */
+html {
+  font-size: var(--base);
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font);
+  font-size: var(--base);
+  line-height: var(--lh);
+  color: var(--text);
+  background: var(--bg);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── LAYOUT WRAPPER ─────────────────────────────────────────── */
+#app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* ── TOP BAR ────────────────────────────────────────────────── */
+#topbar {
+  background: var(--primary);
+  color: var(--primary-text);
+  padding: 12px var(--pad);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+#topbar .app-name {
+  font-size: 20px;
+  font-weight: 700;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#lang-toggle {
+  background: var(--secondary-bg);
+  color: var(--primary);
+  border: 2px solid var(--primary-text);
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: var(--small);
+  font-weight: 700;
+  padding: 6px 12px;
+  min-height: 44px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#lang-toggle:focus {
+  outline: 3px solid #FFD700;
+  outline-offset: 2px;
+}
+
+/* ── TAB BAR ────────────────────────────────────────────────── */
+#tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--secondary-bg);
+  border-bottom: 2px solid var(--primary);
+}
+
+.tab-btn {
+  font-family: var(--font);
+  font-size: var(--btn);
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--secondary-bg);
+  border: none;
+  padding: 14px 8px;
+  cursor: pointer;
+  border-bottom: 4px solid transparent;
+}
+
+.tab-btn[aria-selected="true"] {
+  background: var(--primary);
+  color: var(--primary-text);
+  border-bottom: 4px solid var(--primary);
+}
+
+.tab-btn:focus {
+  outline: 3px solid #FFD700;
+  outline-offset: -3px;
+}
+
+/* ── MAIN CONTENT AREA ──────────────────────────────────────── */
+#main {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 80px; /* room for fixed bottom action */
+}
+
+/* ── SECTIONS (screens) ─────────────────────────────────────── */
+section {
+  display: none;
+  padding: var(--pad);
+}
+
+section.active {
+  display: block;
+}
+
+/* ── STEP INDICATOR ─────────────────────────────────────────── */
+.step-line {
+  font-size: var(--small);
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: var(--gap);
+  padding: 6px 10px;
+  background: var(--muted-bg);
+  border-radius: var(--radius);
+  display: inline-block;
+}
+
+/* ── HEADINGS ───────────────────────────────────────────────── */
+h1, h2 {
+  font-size: var(--heading);
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: var(--gap);
+}
+
+h3 {
+  font-size: var(--base);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+/* ── BUTTONS ────────────────────────────────────────────────── */
+.btn {
+  display: block;
+  width: 100%;
+  font-family: var(--font);
+  font-size: var(--btn);
+  font-weight: 700;
+  line-height: var(--lh);
+  border-radius: var(--radius);
+  border: none;
+  min-height: var(--tap);
+  padding: 12px var(--pad);
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+}
+
+.btn:focus {
+  outline: 3px solid #FFD700;
+  outline-offset: 2px;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-text);
+}
+
+.btn-secondary {
+  background: var(--secondary-bg);
+  color: var(--primary);
+  border: 3px solid var(--primary);
+}
+
+.btn-danger {
+  background: var(--secondary-bg);
+  color: var(--error);
+  border: 3px solid var(--error);
+}
+
+.btn-sm {
+  font-size: var(--small);
+  min-height: 44px;
+  padding: 8px 14px;
+  width: auto;
+  display: inline-block;
+}
+
+/* ── BIG PHOTO BUTTON ───────────────────────────────────────── */
+.photo-btn-wrap {
+  position: relative;
+  margin-bottom: var(--gap);
+}
+
+.photo-btn-wrap input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  font-size: 0;
+}
+
+/* Camera button — solid green (primary) */
+.photo-btn-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 80px;
+  background: var(--primary);
+  color: var(--primary-text);
+  font-family: var(--font);
+  font-size: 24px;
+  font-weight: 700;
+  border-radius: var(--radius);
+  padding: 14px var(--pad);
+  cursor: pointer;
+  border: none;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Gallery button — secondary style: white bg, green border, green text */
+.photo-btn-label-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 80px;
+  background: var(--secondary-bg);
+  color: var(--primary);
+  font-family: var(--font);
+  font-size: 24px;
+  font-weight: 700;
+  border-radius: var(--radius);
+  padding: 14px var(--pad);
+  cursor: pointer;
+  border: 3px solid var(--primary);
+  text-align: center;
+  pointer-events: none;
+}
+
+/* ── INPUTS ─────────────────────────────────────────────────── */
+.field {
+  margin-bottom: var(--gap-l);
+}
+
+.field label {
+  display: block;
+  font-size: var(--base);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  font-family: var(--font);
+  font-size: var(--base);
+  color: var(--text);
+  background: var(--secondary-bg);
+  border: 2px solid var(--card-bd);
+  border-radius: var(--radius);
+  padding: 12px var(--pad);
+  min-height: var(--tap);
+  line-height: var(--lh);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.field .hint {
+  font-size: var(--small);
+  color: #5A4000;
+  margin-top: 4px;
+  font-weight: 400;
+}
+
+.field-error {
+  color: var(--error);
+  font-size: var(--small);
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+/* ── CARDS ──────────────────────────────────────────────────── */
+.card {
+  background: var(--secondary-bg);
+  border: 2px solid var(--card-bd);
+  border-radius: var(--radius);
+  padding: var(--pad);
+  margin-bottom: var(--gap);
+}
+
+.card-warning {
+  background: var(--warning-bg);
+  border: 2px solid #C8860A;
+  border-radius: var(--radius);
+  padding: var(--pad);
+  margin-bottom: var(--gap);
+  color: var(--warning-text);
+}
+
+.card-warning h3 {
+  color: var(--warning-text);
+  font-size: var(--base);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+/* ── STATUS BADGES ──────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  font-size: 18px;        /* Fix 3: at least 18px, bold */
+  font-weight: 700;
+  border-radius: 20px;
+  padding: 4px 14px;
+}
+
+.badge-created  { background: var(--status-created-bg);  color: var(--status-created-txt); }
+.badge-offered  { background: var(--status-offered-bg);  color: var(--status-offered-txt); }
+.badge-quoted   { background: var(--status-quoted-bg);   color: var(--status-quoted-txt);  }
+.badge-closed   { background: var(--status-closed-bg);   color: var(--status-closed-txt);  }
+.badge-auth     { background: #E8F5E9; color: #1B5E20; border: 1px solid #1B5E20; }
+
+/* ── PRICE TEXT ─────────────────────────────────────────────── */
+.price-big {
+  font-size: var(--price);
+  font-weight: 700;
+  color: var(--price-color);
+  line-height: 1.2;
+}
+
+.price-range {
+  font-size: var(--price);
+  font-weight: 700;
+  color: var(--price-color);
+  line-height: 1.2;
+  margin: var(--gap) 0;
+}
+
+/* ── LOT LIST ITEM ──────────────────────────────────────────── */
+.lot-item {
+  background: var(--secondary-bg);
+  border: 2px solid var(--card-bd);
+  border-radius: var(--radius);
+  padding: var(--pad);
+  margin-bottom: var(--gap);
+  cursor: pointer;
+  display: flex;
+  gap: var(--gap);
+  align-items: flex-start;
+  text-align: left;
+  width: 100%;
+  font-family: var(--font);
+}
+
+.lot-item:focus {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.lot-thumb {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  flex-shrink: 0;
+}
+
+.lot-thumb-placeholder {
+  width: 72px;
+  height: 72px;
+  background: var(--muted-bg);
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+}
+
+.lot-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.lot-cats {
+  font-size: var(--small);
+  color: var(--text);
+  margin: 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lot-price {
+  font-size: var(--base);
+  font-weight: 700;
+  color: var(--price-color);
+}
+
+.lot-date {
+  font-size: 15px;
+  color: #444;
+  margin-top: 2px;
+}
+
+/* ── LOADING STATE ──────────────────────────────────────────── */
+.loading-box {
+  text-align: center;
+  padding: 32px var(--pad);
+}
+
+.spinner {
+  display: inline-block;
+  width: 52px;
+  height: 52px;
+  border: 6px solid var(--muted-bg);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  margin-bottom: var(--gap);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: var(--base);
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ── ERROR STATE ────────────────────────────────────────────── */
+.error-box {
+  background: #FFEBEE;
+  border: 2px solid var(--error);
+  border-radius: var(--radius);
+  padding: var(--pad);
+  margin: var(--gap) 0;
+  color: var(--error);
+  font-weight: 700;
+}
+
+.error-box p {
+  margin-bottom: var(--gap);
+}
+
+/* ── EMPTY STATE ────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 32px var(--pad);
+  color: #5A4000;
+  font-size: var(--base);
+}
+
+/* ── DIVIDER ────────────────────────────────────────────────── */
+.divider {
+  border: none;
+  border-top: 2px solid var(--muted-bg);
+  margin: var(--gap-l) 0;
+}
+
+/* ── BOTTOM ACTION BAR ──────────────────────────────────────── */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg);
+  padding: var(--gap) var(--pad);
+  border-top: 2px solid var(--muted-bg);
+  z-index: 50;
+}
+
+/* ── UTILITY ────────────────────────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.stack > * + * {
+  margin-top: var(--gap);
+}
+
+.row {
+  display: flex;
+  gap: var(--gap);
+  align-items: center;
+}
+
+.row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--gap);
+}
+
+.bold { font-weight: 700; }
+.small { font-size: var(--small); }
+.mt { margin-top: var(--gap); }
+.mb { margin-bottom: var(--gap); }
+
+/* ── SCAN SCREEN ────────────────────────────────────────────── */
+.scan-preview {
+  width: 100%;
+  border-radius: var(--radius);
+  border: 2px solid var(--card-bd);
+  display: block;
+  margin-bottom: var(--gap);
+  max-height: 300px;
+  object-fit: contain;
+  background: #000;
+}
+
+/* ── REVIEW SCREEN ──────────────────────────────────────────── */
+.box-wrapper {
+  position: relative;
+  width: 100%;
+  margin-bottom: var(--gap-l);
+  border: 2px solid var(--card-bd);
+  border-radius: var(--radius);
+  overflow: hidden;
+  line-height: 0; /* collapse whitespace around img */
+}
+
+.box-wrapper img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.det-box {
+  position: absolute;
+  border-width: 3px;
+  border-style: solid;
+  box-sizing: border-box;
+}
+
+.det-box-num {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  background: #1B1B1B;
+  color: #FFF;
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 0 0 6px 0;
+}
+
+/* Box colours — cycle through these */
+.box-c0 { border-color: #D32F2F; }
+.box-c1 { border-color: #1565C0; }
+.box-c2 { border-color: #F57F17; }
+.box-c3 { border-color: #6A1B9A; }
+.box-c4 { border-color: #00695C; }
+.box-c5 { border-color: #E65100; }
+.box-c6 { border-color: #37474F; }
+.box-c7 { border-color: #880E4F; }
+
+.item-card {
+  background: var(--secondary-bg);
+  border: 2px solid var(--card-bd);
+  border-radius: var(--radius);
+  padding: var(--pad);
+  margin-bottom: var(--gap);
+}
+
+.item-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--gap);
+}
+
+.item-num-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #1B1B1B;
+  color: #FFF;
+  font-weight: 700;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.weight-row {
+  background: var(--secondary-bg);
+  border: 2px solid var(--card-bd);
+  border-radius: var(--radius);
+  padding: var(--pad);
+  margin-bottom: var(--gap);
+}
+
+.weight-row label {
+  display: block;
+  font-size: var(--base);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.weight-row input {
+  width: 100%;
+  font-family: var(--font);
+  font-size: var(--base);
+  color: var(--text);
+  background: var(--bg);
+  border: 2px solid var(--card-bd);
+  border-radius: var(--radius);
+  padding: 12px var(--pad);
+  min-height: var(--tap);
+}
+
+.weight-row input:focus {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Success screen */
+.success-box {
+  text-align: center;
+  padding: 32px var(--pad);
+}
+
+.success-icon {
+  font-size: 64px;
+  display: block;
+  margin-bottom: var(--gap);
+}
+
+.success-uuid {
+  font-size: var(--small);
+  color: #555;
+  word-break: break-all;
+  margin: var(--gap) 0;
+  padding: 10px;
+  background: var(--muted-bg);
+  border-radius: var(--radius);
+}

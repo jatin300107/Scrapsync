@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="कबाड़ीवाला कनेक्ट — ई-कचरा कबाड़ियों और अधिकृत रीसाइकलर्स को जोड़ने वाला ऐप">
+  <meta name="theme-color" content="#1B5E20">
+  <title>कबाड़ीवाला कनेक्ट</title>
+
+  <!-- Only external resource: Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app" role="main">
+
+  <!-- ── TOP BAR ─────────────────────────────────────────── -->
+  <header id="topbar" role="banner">
+    <span id="app-name" class="app-name">कबाड़ीवाला कनेक्ट</span>
+    <button id="lang-toggle" aria-label="भाषा बदलें">English</button>
+  </header>
+
+  <!-- ── TAB BAR ─────────────────────────────────────────── -->
+  <nav id="tabs" role="tablist" aria-label="मुख्य भाग">
+    <button
+      id="tab-collector"
+      class="tab-btn"
+      role="tab"
+      aria-selected="true"
+      aria-controls="home scan review lot-detail buyers receipt"
+    >कबाड़ी</button>
+    <button
+      id="tab-recycler"
+      class="tab-btn"
+      role="tab"
+      aria-selected="false"
+      aria-controls="recycler"
+    >खरीदार</button>
+  </nav>
+
+  <!-- ── SCREENS ──────────────────────────────────────────── -->
+  <div id="main">
+
+    <!-- ── SCREEN 1: HOME ─────────────────────────────── -->
+    <section id="home" role="tabpanel" aria-label="होम">
+
+      <!-- Photo capture buttons -->
+      <div class="photo-btn-wrap photo-btn-camera" style="margin-bottom:12px">
+        <input
+          type="file"
+          id="camera-input"
+          accept="image/*"
+          capture="environment"
+          aria-label="कैमरे से फोटो खींचें"
+        >
+        <span class="photo-btn-label">📷 फोटो खींचें</span>
+      </div>
+
+      <div class="photo-btn-wrap photo-btn-gallery" style="margin-bottom:24px">
+        <input
+          type="file"
+          id="gallery-input"
+          accept="image/*"
+          aria-label="गैलरी से फोटो चुनें"
+        >
+        <span class="photo-btn-label-secondary">🖼️ गैलरी से चुनें</span>
+      </div>
+
+      <!-- My lots list -->
+      <h2 class="my-lots-heading">मेरा माल</h2>
+      <div class="lots-list" aria-live="polite" aria-label="माल की सूची">
+        <!-- Populated by JS -->
+      </div>
+    </section>
+
+    <!-- ── SCREEN 2: SCAN (stub) ──────────────────────── -->
+    <section id="scan" role="tabpanel" aria-label="फोटो और पहचान">
+      <div class="loading-box">
+        <div class="spinner" aria-hidden="true"></div>
+        <p class="loading-text">पहचान हो रही है, 15 सेकंड तक लग सकते हैं</p>
+      </div>
+    </section>
+
+    <!-- ── SCREEN 3: REVIEW (stub) ────────────────────── -->
+    <section id="review" role="tabpanel" aria-label="माल की जाँच">
+      <p>समीक्षा — अगले चरण में</p>
+    </section>
+
+    <!-- ── SCREEN 4: LOT DETAIL (stub) ───────────────── -->
+    <section id="lot-detail" role="tabpanel" aria-label="माल की पूरी जानकारी">
+      <!-- Populated by JS -->
+    </section>
+
+    <!-- ── SCREEN 5: BUYERS (stub) ────────────────────── -->
+    <section id="buyers" role="tabpanel" aria-label="खरीदारों की सूची">
+      <p>खरीदार — अगले चरण में</p>
+    </section>
+
+    <!-- ── SCREEN 6: RECEIPT (stub) ──────────────────── -->
+    <section id="receipt" role="tabpanel" aria-label="सौदे की रसीद">
+      <p>रसीद — अगले चरण में</p>
+    </section>
+
+    <!-- ── SCREEN LOT-CREATED: post-submit success ────── -->
+    <section id="lot-created" role="tabpanel" aria-label="माल दर्ज हो गया">
+      <!-- Populated by JS -->
+    </section>
+
+    <!-- ── SCREEN 7: RECYCLER (stub) ─────────────────── -->
+    <section id="recycler" role="tabpanel" aria-label="खरीदार का भाग">
+      <!-- Populated by JS -->
+    </section>
+
+  </div><!-- /#main -->
+
+</div><!-- /#app -->
+
+<!-- Scripts: config first, then app -->
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
