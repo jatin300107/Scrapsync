@@ -1,4 +1,5 @@
 import json
+from magnum import Mangum
 from collections import defaultdict
 from typing import List, Optional
 from app.backend.workers.recyclers import build_offer, audit_to_out 
@@ -359,3 +360,6 @@ def quote(lot_uuid: str, body: QuoteIn, session: Session = Depends(get_session))
     session.commit()
     session.refresh(lot)
     return lot_out(session, lot)
+
+
+handler = Mangum(app, lifespan="off")
