@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Kabadiwala Connect backend
+
+Parameters:
+  GeminiApiKey:
+    Type: String
+    NoEcho: true
+  OrsApiKey:
+    Type: String
+    NoEcho: true
+  BucketName:
+    Type: String
+    Default: ewaste-uploads-jatin-2026
+  DatabaseHost:
+    Type: String
+    NoEcho: true
+  DatabaseName:
+    Type: String
+    NoEcho: true  
+  DatabaseUser:
+    Type: String
+    NoEcho: true
+  DatabasePassword: 
+    Type: String
+    NoEcho: true  
+  DatabasePort:
+    Type: String
+    NoEcho: true
+  S3Region:
+    Type: String
+    Default: ap-southeast-2
+  GeminiModel:
+    Type: String
+    Default: gemini-3.1-flash-lite
+  
+  
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Timeout: 60
+    MemorySize: 1024
+
+Resources:
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: app.backend.main.handler
+      Architectures:
+        - x86_64
+      FunctionUrlConfig:
+        AuthType: NONE
+      Environment:
+        Variables:
+          GEMINI_API_KEY: !Ref GeminiApiKey
+          ORS_API_KEY: !Ref OrsApiKey
+          DB_HOST: !Ref DatabaseHost
+          DB_NAME: !Ref DatabaseName
+          DB_USER: !Ref DatabaseUser
+          DB_PASSWORD: !Ref DatabasePassword
+          DB_PORT: !Ref DatabasePort
+          S3_BUCKET_NAME: !Ref BucketName
+          S3_REGION: !Ref S3Region
+          GEMINI_MODEL: "gemini-3.1-flash-lite"
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+              Resource: !Sub arn:aws:s3:::${BucketName}/*
+
+Outputs:
+  FunctionUrl:
+    Description: Base URL for the frontend
+    Value: !GetAtt ApiFunctionUrl.FunctionUrl

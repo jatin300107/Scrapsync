@@ -1,5 +1,5 @@
 import json
-from magnum import Mangum
+from mangum import Mangum
 from collections import defaultdict
 from typing import List, Optional
 from app.backend.workers.recyclers import build_offer, audit_to_out 
