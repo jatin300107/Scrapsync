@@ -1,6 +1,6 @@
 /* ============================================================
    Kabadiwala Connect — app.js
-   Stage 1 + Stage 2 + Stage 3 (Lot Detail screen)
+   Stage 1 + Stage 2 + Stage 3 + Stage 4 (Buyers & Receipt)
    ============================================================ */
 
 "use strict";
@@ -23,6 +23,8 @@ const T = {
     noPrice:          "अभी कीमत उपलब्ध नहीं",
     priceRange:       (mn, mx) => `₹${inr(mn)} से ₹${inr(mx)}`,
     step:             (n, total) => `चरण ${n} / ${total}`,
+    step3of4:         "चरण 3 / 4",
+    step4of4:         "चरण 4 / 4",
     // Status labels
     statusCreated:    "नया माल",
     statusOffered:    "प्रस्ताव भेजा",
@@ -61,9 +63,23 @@ const T = {
     agree:            "मंज़ूर है",
     viewReceipt:      "सौदे की रसीद देखें",
     listen:           "सुनें 🔊",
-    // Placeholder stage 4
-    nextStep:         "अगला चरण",
-    nextStepTitle:    "अगला चरण (Stage 4 में आ रहा है)",
+    // Screen 5 - buyers
+    buyersTitle:      "खरीदार",
+    bestPrice:        "सबसे अच्छी कीमत",
+    authorized:       "CPCB से अधिकृत",
+    distKm:           (km, approx) => `${approx ? "लगभग " : ""}${km} किमी दूर`,
+    sendOffer:        "प्रस्ताव भेजें",
+    sendingOffer:     "प्रस्ताव भेजा जा रहा है...",
+    showMore:         "और दिखाएँ",
+    breakdown:        "श्रेणी-वार विवरण",
+    buyerUnavailable: "यह खरीदार इस माल के लिए उपलब्ध नहीं",
+    noBuyers:         "कोई खरीदार उपलब्ध नहीं है",
+    // Screen 6 - receipt
+    receiptTitle:     "सौदे की रसीद",
+    rateCardTotal:    "रेट कार्ड की कीमत",
+    agreedPrice:      "तय कीमत",
+    deviation:        (pct) => `रेट कार्ड से अंतर: ${pct}%`,
+    goHome:           "होम पर जाएँ",
     // Category labels
     catMobilePhone:   "📱 मोबाइल फोन",
     catLaptop:        "💻 लैपटॉप",
@@ -90,6 +106,8 @@ const T = {
     noPrice:          "Price not available yet",
     priceRange:       (mn, mx) => `₹${inr(mn)} to ₹${inr(mx)}`,
     step:             (n, total) => `Step ${n} of ${total}`,
+    step3of4:         "Step 3 of 4",
+    step4of4:         "Step 4 of 4",
     statusCreated:    "New Lot",
     statusOffered:    "Offer Sent",
     statusQuoted:     "Price Received",
@@ -124,8 +142,21 @@ const T = {
     agree:            "Accept",
     viewReceipt:      "View Receipt",
     listen:           "Listen 🔊",
-    nextStep:         "Next Step",
-    nextStepTitle:    "Next Step (Coming in Stage 4)",
+    buyersTitle:      "Buyers",
+    bestPrice:        "Best Price",
+    authorized:       "CPCB Authorized",
+    distKm:           (km, approx) => `${approx ? "Approx. " : ""}${km} km away`,
+    sendOffer:        "Send Offer",
+    sendingOffer:     "Sending Offer...",
+    showMore:         "Show More",
+    breakdown:        "Category Breakdown",
+    buyerUnavailable: "This buyer is not available for this lot",
+    noBuyers:         "No buyers available",
+    receiptTitle:     "Deal Receipt",
+    rateCardTotal:    "Rate Card Total",
+    agreedPrice:      "Agreed Price",
+    deviation:        (pct) => `Difference from rate card: ${pct}%`,
+    goHome:           "Go to Home",
     catMobilePhone:   "📱 Mobile Phone",
     catLaptop:        "💻 Laptop",
     catBattery:       "🔋 Battery",
@@ -227,11 +258,18 @@ const STATE = {
   categories:    [],         // from GET /categories
   lots:          [],         // from GET /lots
   currentLot:    null,
+  currentAudit:  null,
 
   // Stage 2
   identifyBlob:  null,       // resized JPEG blob
   identifyBlobURL: null,     // object URL for display
   reviewItems:   [],         // editable copy of identify results
+
+  // Stage 4 Buyers state
+  buyersLotUuid: null,
+  buyersPage:    1,
+  buyersList:    [],
+  buyersHasMore: false,
 };
 
 // ── SCREEN MANAGER ─────────────────────────────────────────────
@@ -266,6 +304,8 @@ function refreshCurrentScreen() {
   }
   else if (s === "review") renderReview();
   else if (s === "lot-detail" && STATE.currentLot) renderLotDetail(STATE.currentLot);
+  else if (s === "buyers" && STATE.buyersList.length) renderBuyersList();
+  else if (s === "receipt" && STATE.currentAudit) renderReceipt(STATE.currentAudit);
 }
 
 // ── TOP BAR & TABS ─────────────────────────────────────────────
@@ -315,7 +355,9 @@ document.addEventListener("DOMContentLoaded", () => {
 // ── SCREEN 1: HOME ─────────────────────────────────────────────
 async function initHome() {
   const listEl = document.getElementById("my-lots-list");
-  listEl.innerHTML = `<div class="loading-box"><div class="spinner" aria-hidden="true"></div><p class="loading-text">${t("loading")}</p></div>`;
+  if (listEl) {
+    listEl.innerHTML = `<div class="loading-box"><div class="spinner" aria-hidden="true"></div><p class="loading-text">${t("loading")}</p></div>`;
+  }
 
   try {
     const catRes = await apiFetch("/categories");
@@ -333,34 +375,40 @@ async function renderHome() {
   const section = document.getElementById("home");
   const listEl  = document.getElementById("my-lots-list");
 
-  document.getElementById("camera-label").textContent  = t("photoBtn");
-  document.getElementById("gallery-label").textContent = t("galleryBtn");
-  document.getElementById("my-lots-title").textContent  = t("myLots");
+  const camLbl = document.getElementById("camera-label");
+  const galLbl = document.getElementById("gallery-label");
+  const titleLbl = document.getElementById("my-lots-title");
+
+  if (camLbl) camLbl.textContent = t("photoBtn");
+  if (galLbl) galLbl.textContent = t("galleryBtn");
+  if (titleLbl) titleLbl.textContent = t("myLots");
 
   const cameraInput  = document.getElementById("camera-input");
   const galleryInput = document.getElementById("gallery-input");
 
-  cameraInput.onchange  = e => { if (e.target.files[0]) handlePhotoSelected(e.target.files[0]); };
-  galleryInput.onchange = e => { if (e.target.files[0]) handlePhotoSelected(e.target.files[0]); };
+  if (cameraInput) cameraInput.onchange  = e => { if (e.target.files[0]) handlePhotoSelected(e.target.files[0]); };
+  if (galleryInput) galleryInput.onchange = e => { if (e.target.files[0]) handlePhotoSelected(e.target.files[0]); };
 
-  listEl.innerHTML = `<div class="loading-box"><div class="spinner" aria-hidden="true"></div><p class="loading-text">${t("loading")}</p></div>`;
+  if (listEl) {
+    listEl.innerHTML = `<div class="loading-box"><div class="spinner" aria-hidden="true"></div><p class="loading-text">${t("loading")}</p></div>`;
+  }
 
   try {
     const res = await apiFetch("/lots");
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      renderLotsError(listEl, extractDetail(body));
+      if (listEl) renderLotsError(listEl, extractDetail(body));
       return;
     }
     const data = await res.json();
     STATE.lots = data.lots || [];
-    renderLotsList(listEl);
+    if (listEl) renderLotsList(listEl);
   } catch (err) {
     if (err instanceof TypeError && /fetch|network|cors/i.test(err.message)) {
-      listEl.innerHTML = `<div class="error-box"><p>⚠️ CORS ERROR — backend failed.</p></div>`;
+      if (listEl) listEl.innerHTML = `<div class="error-box"><p>⚠️ CORS ERROR — backend failed.</p></div>`;
       return;
     }
-    renderLotsError(listEl, null);
+    if (listEl) renderLotsError(listEl, null);
   }
 }
 
@@ -836,7 +884,6 @@ async function submitLot() {
     STATE._reviewAddress = "";
     Object.keys(_weights).forEach(k => delete _weights[k]);
 
-    // Go straight to Screen 4 (lot detail)
     showLotDetail(lot.uuid);
 
   } catch (err) {
@@ -970,7 +1017,7 @@ function renderLotDetail(lot) {
   let actionHtml = "";
   if (lot.status === "created") {
     actionHtml = `
-      <button class="btn btn-primary" onclick="showPlaceholder('buyers', '${lot.uuid}')">${t("findBuyer")}</button>`;
+      <button class="btn btn-primary" onclick="showBuyersList('${lot.uuid}')">${t("findBuyer")}</button>`;
   } else if (lot.status === "offered") {
     const recycler = lot.offer?.recycler;
     actionHtml = `
@@ -1001,13 +1048,13 @@ function renderLotDetail(lot) {
         ` : ""}
       </div>
       <div class="stack">
-        <button class="btn btn-primary" onclick="showPlaceholder('agree', '${lot.uuid}')">${t("agree")}</button>
+        <button class="btn btn-primary" id="agree-btn" onclick="agreeLot('${lot.uuid}')">${t("agree")}</button>
         <button class="btn btn-secondary mb" id="withdraw-btn" onclick="withdrawOffer('${lot.uuid}')">${t("withdraw")}</button>
       </div>`;
   } else if (lot.status === "closed") {
     const auditUuid = lot.audit_uuid || lot.uuid;
     actionHtml = `
-      <button class="btn btn-primary" onclick="showPlaceholder('receipt', '${auditUuid}')">${t("viewReceipt")}</button>`;
+      <button class="btn btn-primary" onclick="showReceipt('${auditUuid}')">${t("viewReceipt")}</button>`;
   }
 
   section.innerHTML = `
@@ -1057,22 +1104,332 @@ async function withdrawOffer(lotUuid) {
   }
 }
 
-// ── STAGE 4 PLACEHOLDER ────────────────────────────────────────
-function showPlaceholder(type, refId) {
+// ── AGREE LOT (Stage 4) ────────────────────────────────────────
+async function agreeLot(lotUuid) {
+  const btn = document.getElementById("agree-btn");
+  if (btn) { btn.disabled = true; btn.textContent = t("loading"); }
+
+  try {
+    const res = await apiFetch(`/lots/${lotUuid}/agree`, { method: "POST" });
+    if (res.status === 409) {
+      showLotDetail(lotUuid);
+      return;
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(extractDetail(body) || t("error"));
+      if (btn) { btn.disabled = false; btn.textContent = t("agree"); }
+      return;
+    }
+    const audit = await res.json();
+    showReceipt(audit.uuid);
+  } catch (err) {
+    alert(t("error"));
+    if (btn) { btn.disabled = false; btn.textContent = t("agree"); }
+  }
+}
+
+// ── SCREEN 5: BUYERS LIST (Stage 4) ────────────────────────────
+async function showBuyersList(lotUuid, page = 1, append = false) {
   show("buyers");
-  const buyersSec = document.getElementById("buyers");
-  buyersSec.innerHTML = `
-    <button class="btn btn-secondary btn-sm mb" onclick="showLotDetail('${refId}')">${t("back")}</button>
-    <h1>${t("nextStep")}</h1>
-    <div class="card" style="margin-top:20px; text-align:center; padding:32px var(--pad)">
-      <p style="font-size:36px; margin-bottom:12px">🚀</p>
-      <p class="bold" style="font-size:22px">${t("nextStepTitle")}</p>
-      <p class="small mt" style="color:#666">(Stage 4 feature — ${escHtml(type)})</p>
+  const section = document.getElementById("buyers");
+
+  if (!append) {
+    STATE.buyersLotUuid = lotUuid;
+    STATE.buyersPage    = 1;
+    STATE.buyersList    = [];
+    STATE.buyersHasMore = false;
+
+    section.innerHTML = `
+      <div class="step-line">${t("step3of4")}</div>
+      <button class="btn btn-secondary btn-sm mb" onclick="showLotDetail('${lotUuid}')">${t("back")}</button>
+      <h1>${t("buyersTitle")}</h1>
+      <div class="loading-box">
+        <div class="spinner" aria-hidden="true"></div>
+        <p class="loading-text">${t("loading")}</p>
+      </div>`;
+  } else {
+    const moreBtn = document.getElementById("show-more-btn");
+    if (moreBtn) { moreBtn.disabled = true; moreBtn.textContent = t("loading"); }
+  }
+
+  try {
+    const res = await apiFetch(`/lots/${lotUuid}/recyclers?page=${page}`);
+    if (res.status === 409) {
+      showLotDetail(lotUuid);
+      return;
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      renderBuyersError(section, lotUuid, extractDetail(body) || t("error"));
+      return;
+    }
+
+    const data = await res.json();
+    const newItems = data.recyclers || [];
+
+    if (append) {
+      STATE.buyersList = [...STATE.buyersList, ...newItems];
+    } else {
+      STATE.buyersList = newItems;
+    }
+
+    STATE.buyersHasMore = !!data.has_more;
+    STATE.buyersPage    = page;
+
+    renderBuyersList();
+
+  } catch (err) {
+    if (err instanceof TypeError && /fetch|network|cors/i.test(err.message)) {
+      section.innerHTML = `
+        <button class="btn btn-secondary btn-sm mb" onclick="showLotDetail('${lotUuid}')">${t("back")}</button>
+        <div class="error-box"><p>⚠️ CORS ERROR — backend failed.</p></div>`;
+      return;
+    }
+    renderBuyersError(section, lotUuid, t("error"));
+  }
+}
+
+function renderBuyersError(container, lotUuid, msg) {
+  container.innerHTML = `
+    <div class="step-line">${t("step3of4")}</div>
+    <button class="btn btn-secondary btn-sm mb" onclick="showLotDetail('${lotUuid}')">${t("back")}</button>
+    <h1>${t("buyersTitle")}</h1>
+    <div class="error-box">
+      <p>${escHtml(msg)}</p>
+      <div class="stack mt">
+        <button class="btn btn-primary" onclick="showBuyersList('${lotUuid}', 1)">${t("retry")}</button>
+      </div>
     </div>`;
+}
+
+function renderBuyersList() {
+  const section = document.getElementById("buyers");
+  const lotUuid = STATE.buyersLotUuid;
+
+  let cardsHtml = "";
+  if (STATE.buyersList.length === 0) {
+    cardsHtml = `<div class="empty-state">${t("noBuyers")}</div>`;
+  } else {
+    cardsHtml = STATE.buyersList.map((item, i) => {
+      const rc = item.recycler;
+      const isBest = (i === 0);
+      const isAuth = rc.is_authorized;
+      const distText = (item.distance_km != null) ? t("distKm", item.distance_km, item.distance_is_approximate) : "";
+
+      const breakdownRows = (item.breakdown || []).map(b => `
+        <div class="row-between" style="padding:6px 0; border-bottom:1px solid #e0e0e0; font-size:15px">
+          <span>${escHtml(catLabel(b.category))} (${b.weight_kg} kg)</span>
+          <span class="bold">₹${b.rate_per_kg}/kg = ₹${inr(b.price)}</span>
+        </div>
+      `).join("");
+
+      return `
+        <div class="card buyer-card" id="buyer-card-${rc.id}" style="margin-bottom:16px; position:relative">
+          ${isBest ? `<div style="background:#1B5E20; color:#fff; font-weight:700; font-size:14px; padding:4px 12px; border-radius:12px; display:inline-block; margin-bottom:8px">⭐ ${t("bestPrice")}</div>` : ""}
+
+          <div class="row-between" style="align-items:flex-start; margin-bottom:8px">
+            <div style="flex:1; padding-right:12px">
+              <div class="bold" style="font-size:20px; line-height:1.2; margin-bottom:4px">${escHtml(rc.name)}</div>
+              <div class="small" style="color:#555">📍 ${escHtml(rc.facility_location)}</div>
+              ${isAuth ? `<span class="badge badge-auth" style="margin-top:6px; display:inline-block; font-size:14px; padding:2px 8px">${t("authorized")}</span>` : ""}
+              ${distText ? `<div style="font-size:18px; font-weight:700; color:#444; margin-top:8px">🚗 ${escHtml(distText)}</div>` : ""}
+            </div>
+
+            <div style="text-align:right; flex-shrink:0">
+              <div class="price-big" style="font-size:40px; font-weight:700; color:#1B5E20; line-height:1">₹${inr(item.rate_card_total)}</div>
+            </div>
+          </div>
+
+          <!-- Breakdown Toggle -->
+          <div style="margin-top:12px; margin-bottom:12px">
+            <button class="btn btn-secondary btn-sm" onclick="toggleBreakdown(${rc.id})" style="font-size:14px; padding:6px 12px; width:auto">
+              📊 ${t("breakdown")} <span id="bd-arrow-${rc.id}">▼</span>
+            </button>
+            <div id="breakdown-${rc.id}" style="display:none; margin-top:10px; background:#f9f9f9; padding:12px; border-radius:8px; border:1px solid #eee">
+              ${breakdownRows}
+            </div>
+          </div>
+
+          <button class="btn btn-primary" id="offer-btn-${rc.id}" onclick="sendOfferToRecycler(${rc.id})">${t("sendOffer")}</button>
+        </div>`;
+    }).join("");
+  }
+
+  const moreBtnHtml = STATE.buyersHasMore
+    ? `<button class="btn btn-secondary mt mb" id="show-more-btn" onclick="showBuyersList('${lotUuid}', ${STATE.buyersPage + 1}, true)">${t("showMore")}</button>`
+    : "";
+
+  section.innerHTML = `
+    <div class="step-line">${t("step3of4")}</div>
+    <button class="btn btn-secondary btn-sm mb" onclick="showLotDetail('${lotUuid}')">${t("back")}</button>
+    <h1 style="margin-bottom:16px">${t("buyersTitle")}</h1>
+
+    <div id="buyers-cards">${cardsHtml}</div>
+    ${moreBtnHtml}
+    <div style="height:60px"></div>`;
+}
+
+function toggleBreakdown(rcId) {
+  const bd = document.getElementById(`breakdown-${rcId}`);
+  const arrow = document.getElementById(`bd-arrow-${rcId}`);
+  if (!bd) return;
+  if (bd.style.display === "none" || !bd.style.display) {
+    bd.style.display = "block";
+    if (arrow) arrow.textContent = "▲";
+  } else {
+    bd.style.display = "none";
+    if (arrow) arrow.textContent = "▼";
+  }
+}
+
+async function sendOfferToRecycler(recyclerId) {
+  const btn = document.getElementById(`offer-btn-${recyclerId}`);
+  if (btn) { btn.disabled = true; btn.textContent = t("sendingOffer"); }
+
+  const lotUuid = STATE.buyersLotUuid;
+
+  try {
+    const res = await apiFetch(`/lots/${lotUuid}/offer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recycler_id: recyclerId }),
+    });
+
+    if (res.status === 409) {
+      showLotDetail(lotUuid);
+      return;
+    }
+
+    if (res.status === 422) {
+      alert(t("buyerUnavailable"));
+      if (btn) { btn.disabled = false; btn.textContent = t("sendOffer"); }
+      return;
+    }
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(extractDetail(body) || t("error"));
+      if (btn) { btn.disabled = false; btn.textContent = t("sendOffer"); }
+      return;
+    }
+
+    // Success -> go to lot detail screen reloaded
+    showLotDetail(lotUuid);
+
+  } catch (err) {
+    alert(t("error"));
+    if (btn) { btn.disabled = false; btn.textContent = t("sendOffer"); }
+  }
+}
+
+// ── SCREEN 6: RECEIPT (Stage 4) ────────────────────────────────
+async function showReceipt(auditUuid) {
+  show("receipt");
+  const section = document.getElementById("receipt");
+
+  section.innerHTML = `
+    <div class="step-line">${t("step4of4")}</div>
+    <div class="loading-box">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="loading-text">${t("loading")}</p>
+    </div>`;
+
+  try {
+    const res = await apiFetch(`/audits/${auditUuid}`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      renderReceiptError(section, auditUuid, extractDetail(body) || t("error"));
+      return;
+    }
+    const audit = await res.json();
+    STATE.currentAudit = audit;
+    renderReceipt(audit);
+  } catch (err) {
+    if (err instanceof TypeError && /fetch|network|cors/i.test(err.message)) {
+      section.innerHTML = `
+        <div class="error-box"><p>⚠️ CORS ERROR — backend failed.</p></div>`;
+      return;
+    }
+    renderReceiptError(section, auditUuid, t("error"));
+  }
+}
+
+function renderReceiptError(container, auditUuid, msg) {
+  container.innerHTML = `
+    <div class="step-line">${t("step4of4")}</div>
+    <div class="error-box">
+      <p>${escHtml(msg)}</p>
+      <div class="stack mt">
+        <button class="btn btn-primary" onclick="showReceipt('${auditUuid}')">${t("retry")}</button>
+        <button class="btn btn-secondary" onclick="show('home');renderHome()">${t("goHome")}</button>
+      </div>
+    </div>`;
+}
+
+function renderReceipt(audit) {
+  const section = document.getElementById("receipt");
+
+  const recycler = audit.recycler;
+  const recyclerCard = `
+    <div class="card" style="margin-bottom:16px; border:2px solid var(--primary)">
+      <div class="bold" style="font-size:20px; margin-bottom:4px">${escHtml(recycler?.name)}</div>
+      <div class="small" style="color:#555">📍 ${escHtml(recycler?.facility_location)}</div>
+      ${recycler?.is_authorized ? `<span class="badge badge-auth mt" style="display:inline-block; margin-top:8px">${t("authorized")}</span>` : ""}
+    </div>`;
+
+  const catRows = (audit.categories || []).map(c => `
+    <div class="row-between" style="padding:6px 0; border-bottom:1px solid #eee; font-size:16px">
+      <span class="bold">${escHtml(catLabel(c.category))}</span>
+      <span class="bold">${c.weight_kg} kg</span>
+    </div>
+  `).join("");
+
+  const totalWeight = audit.total_weight_kg || (audit.categories || []).reduce((a, b) => a + (b.weight_kg || 0), 0);
+
+  const categoriesCard = `
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="font-size:18px; margin-bottom:8px">${t("itemCategory")}</h3>
+      ${catRows}
+      <div class="row-between bold" style="padding-top:10px; font-size:18px; color:#1B5E20">
+        <span>${t("totalWeightLabel")}</span>
+        <span>${totalWeight} kg</span>
+      </div>
+    </div>`;
+
+  const devPercent = audit.deviation_percent;
+  const deviationHtml = (devPercent != null)
+    ? `<div style="font-size:16px; font-weight:700; color:#2E7D32; margin-top:8px">📊 ${t("deviation", devPercent)}</div>`
+    : "";
+
+  const priceCard = `
+    <div class="card" style="margin-bottom:20px; background:#E8F5E9; border:2px solid #1B5E20; text-align:center; padding:20px var(--pad)">
+      <div class="small" style="color:#555; margin-bottom:4px">${t("rateCardTotal")}: ₹${inr(audit.rate_card_total)}</div>
+      <div class="small" style="color:#1B5E20; font-weight:700; margin-bottom:6px; font-size:18px">${t("agreedPrice")}</div>
+      <div class="price-big" style="font-size:44px; font-weight:700; color:#1B5E20; line-height:1.1">
+        ₹${inr(audit.agreed_price)}
+      </div>
+      ${deviationHtml}
+    </div>`;
+
+  const confirmDate = formatDate(audit.collector_confirmed_at || audit.created_at);
+
+  section.innerHTML = `
+    <div class="step-line">${t("step4of4")}</div>
+    <h1 style="margin-bottom:16px">${t("receiptTitle")}</h1>
+
+    ${recyclerCard}
+    ${categoriesCard}
+    ${priceCard}
+
+    <p class="small text-center" style="color:#666; margin-bottom:24px; text-align:center">🗓️ ${confirmDate}</p>
+
+    <button class="btn btn-primary" onclick="show('home');renderHome()">${t("goHome")}</button>
+    <div style="height:60px"></div>`;
 }
 
 // ── SCREEN 7: RECYCLER (stub) ──────────────────────────────────
 function renderRecycler() {
   const section = document.getElementById("recycler");
-  section.innerHTML = `<h1>${t("tabRecycler")}</h1><p class="small mt">(Stage 4 feature)</p>`;
+  section.innerHTML = `<h1>${t("tabRecycler")}</h1><p class="small mt">(Stage 5 feature)</p>`;
 }
