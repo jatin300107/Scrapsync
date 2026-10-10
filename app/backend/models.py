@@ -1,12 +1,12 @@
-from datetime import datetime , timezone
+from datetime import datetime, timezone 
 from typing import List, Optional
 from uuid import uuid4
 
 from sqlmodel import JSON, Column, Field, Relationship, SQLModel
 
+
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
-
 class Collector(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str

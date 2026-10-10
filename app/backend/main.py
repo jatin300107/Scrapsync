@@ -3,7 +3,7 @@ from collections import defaultdict
 from typing import List, Optional
 from app.backend.workers.recyclers import build_offer, audit_to_out 
 from app.backend.workers.ors import distances_for
-from app.backend.workers.helpers import iso, recycler_summary , get_lot_or_404
+from app.backend.workers.helpers import get_coordinates_from_address, iso, recycler_summary , get_lot_or_404 
 from app.backend.workers.pricing import eligible_recyclers, all_rates, price_recyclers
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile , Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,9 +13,9 @@ from uuid import uuid4
 from app.backend.constants import CATEGORIES, PAGE_SIZE
 
 from app.backend.constants import CATEGORIES
-from app.backend.db import get_session , utcnow
+from app.backend.db import get_session
 from app.backend.workers.identify_service import IdentificationError, identify_image
-from app.backend.models import Audit, Lot, Recycler, SafetyGuideline
+from app.backend.models import Audit, Lot, Recycler, SafetyGuideline , utcnow
 from .workers.pricing import price_recyclers , price_card
 from .workers.schemas import (
     Box,
@@ -151,8 +151,8 @@ def identify(image: UploadFile = File(...)):
 def create_lot(
     image: UploadFile = File(...),
     categories: str = Form(...),
-    latitude: Optional[float] = Form(None),
-    longitude: Optional[float] = Form(None),
+   
+    address: Optional[str] = Form(None),
     session: Session = Depends(get_session),
 ):
     data = read_image(image)
@@ -163,7 +163,7 @@ def create_lot(
         image_ref = upload_image(data)
     except Exception:
         raise HTTPException(502, "Image storage failed")
-
+    lat, lon = get_coordinates_from_address(address) if address else (None, None)
     rules = session.exec(
         select(SafetyGuideline)
         .where(SafetyGuideline.material_category.in_(keys))
@@ -192,8 +192,8 @@ def create_lot(
         safety_guidelines=safety,
         estimated_min=min(totals) if totals else None,
         estimated_max=max(totals) if totals else None,
-        latitude=latitude,
-        longitude=longitude,
+        latitude=lat,
+        longitude=lon,
     )
     session.add(lot)
     session.commit()
@@ -214,7 +214,7 @@ def list_lots(session: Session = Depends(get_session)):
     lots = session.exec(
         select(Lot).where(Lot.collector_id == DEMO_COLLECTOR_ID).order_by(Lot.created_at.desc())
     ).all()
-    return {"lots": [lot_out(l, session) for l in lots]}
+    return {"lots": [lot_out(session,l) for l in lots]}
 
 
 
@@ -267,7 +267,7 @@ def offer(lot_uuid: str, body: OfferIn, session: Session = Depends(get_session))
     session.add(lot)
     session.commit()
     session.refresh(lot)
-    return lot_out(lot, session)
+    return lot_out(session, lot)
 
 
 @app.post("/lots/{lot_uuid}/withdraw")
@@ -284,7 +284,7 @@ def withdraw(lot_uuid: str, session: Session = Depends(get_session)):
     session.add(lot)
     session.commit()
     session.refresh(lot)
-    return lot_out(lot, session)
+    return lot_out(session, lot)
 
 
 @app.post("/lots/{lot_uuid}/agree", status_code=201)
@@ -342,7 +342,7 @@ def recycler_offers(recycler_id: int, session: Session = Depends(get_session)):
         .where(Lot.status.in_(["offered", "quoted", "closed"]))
         .order_by(Lot.offered_at.desc())
     ).all()
-    return {"lots": [lot_out(l, session) for l in lots]}
+    return {"lots": [lot_out(session, l) for l in lots]}
 
 
 @app.post("/lots/{lot_uuid}/quote")
@@ -358,4 +358,4 @@ def quote(lot_uuid: str, body: QuoteIn, session: Session = Depends(get_session))
     session.add(lot)
     session.commit()
     session.refresh(lot)
-    return lot_out(lot, session)
+    return lot_out(session, lot)
