@@ -1,6 +1,6 @@
 /* ============================================================
    Kabadiwala Connect — app.js
-   Stage 1 + Stage 2 + Stage 3 + Stage 4 (Buyers & Receipt)
+   Stage 1 + Stage 2 + Stage 3 + Stage 4 + Stage 5 (Recycler Tab)
    ============================================================ */
 
 "use strict";
@@ -28,6 +28,7 @@ const T = {
     // Status labels
     statusCreated:    "नया माल",
     statusOffered:    "प्रस्ताव भेजा",
+    statusOfferedRecycler: "प्रस्ताव आया",
     statusQuoted:     "कीमत आ गई",
     statusClosed:     "सौदा पूरा",
     // Screen 2 - scan
@@ -80,6 +81,16 @@ const T = {
     agreedPrice:      "तय कीमत",
     deviation:        (pct) => `रेट कार्ड से अंतर: ${pct}%`,
     goHome:           "होम पर जाएँ",
+    // Screen 7 - recycler tab (Stage 5)
+    chooseBuyer:      "खरीदार चुनें",
+    refresh:          "नया देखें",
+    noOffers:         "अभी कोई प्रस्ताव नहीं",
+    yourPrice:        "आपकी कीमत (₹)",
+    sendQuote:        "कीमत भेजें",
+    quoteSent:        (p) => `कीमत भेज दी: ₹${inr(p)}, कबाड़ी के जवाब का इंतज़ार`,
+    quoteForbidden:   "यह माल इस खरीदार के लिए नहीं है",
+    quotePriceError:  "कीमत कम से कम ₹1 होनी चाहिए",
+    dealDone:         "सौदा पूरा",
     // Category labels
     catMobilePhone:   "📱 मोबाइल फोन",
     catLaptop:        "💻 लैपटॉप",
@@ -110,6 +121,7 @@ const T = {
     step4of4:         "Step 4 of 4",
     statusCreated:    "New Lot",
     statusOffered:    "Offer Sent",
+    statusOfferedRecycler: "Offer Received",
     statusQuoted:     "Price Received",
     statusClosed:     "Deal Done",
     scanHeading:      "Photo Identification",
@@ -157,6 +169,15 @@ const T = {
     agreedPrice:      "Agreed Price",
     deviation:        (pct) => `Difference from rate card: ${pct}%`,
     goHome:           "Go to Home",
+    chooseBuyer:      "Select Buyer",
+    refresh:          "Refresh",
+    noOffers:         "No offers yet",
+    yourPrice:        "Your Price (₹)",
+    sendQuote:        "Send Quote",
+    quoteSent:        (p) => `Quote sent: ₹${inr(p)}, waiting for collector`,
+    quoteForbidden:   "This lot is not for this buyer",
+    quotePriceError:  "Price must be at least ₹1",
+    dealDone:         "Deal Done",
     catMobilePhone:   "📱 Mobile Phone",
     catLaptop:        "💻 Laptop",
     catBattery:       "🔋 Battery",
@@ -199,7 +220,10 @@ function catLabel(key) {
   return cached ? cached.label : key;
 }
 
-function statusLabel(status) {
+function statusLabel(status, isRecyclerTab = false) {
+  if (isRecyclerTab && status === "offered") {
+    return t("statusOfferedRecycler");
+  }
   const map = {
     created: "statusCreated",
     offered: "statusOffered",
@@ -270,6 +294,11 @@ const STATE = {
   buyersPage:    1,
   buyersList:    [],
   buyersHasMore: false,
+
+  // Stage 5 Recycler tab state
+  recyclersList:     [],
+  selectedRecyclerId: null,
+  recyclerOffers:    [],
 };
 
 // ── SCREEN MANAGER ─────────────────────────────────────────────
@@ -306,6 +335,7 @@ function refreshCurrentScreen() {
   else if (s === "lot-detail" && STATE.currentLot) renderLotDetail(STATE.currentLot);
   else if (s === "buyers" && STATE.buyersList.length) renderBuyersList();
   else if (s === "receipt" && STATE.currentAudit) renderReceipt(STATE.currentAudit);
+  else if (s === "recycler") renderRecycler();
 }
 
 // ── TOP BAR & TABS ─────────────────────────────────────────────
@@ -1314,7 +1344,6 @@ async function sendOfferToRecycler(recyclerId) {
       return;
     }
 
-    // Success -> go to lot detail screen reloaded
     showLotDetail(lotUuid);
 
   } catch (err) {
@@ -1428,8 +1457,266 @@ function renderReceipt(audit) {
     <div style="height:60px"></div>`;
 }
 
-// ── SCREEN 7: RECYCLER (stub) ──────────────────────────────────
-function renderRecycler() {
+// ── SCREEN 7: RECYCLER TAB (Stage 5) ───────────────────────────
+async function renderRecycler() {
+  show("recycler");
   const section = document.getElementById("recycler");
-  section.innerHTML = `<h1>${t("tabRecycler")}</h1><p class="small mt">(Stage 5 feature)</p>`;
+
+  if (!STATE.recyclersList || STATE.recyclersList.length === 0) {
+    section.innerHTML = `
+      <div class="loading-box">
+        <div class="spinner" aria-hidden="true"></div>
+        <p class="loading-text">${t("loading")}</p>
+      </div>`;
+
+    try {
+      const res = await apiFetch("/recyclers");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        renderRecyclerTabError(section, extractDetail(body) || t("error"));
+        return;
+      }
+      STATE.recyclersList = await res.json();
+      if (STATE.recyclersList.length > 0 && !STATE.selectedRecyclerId) {
+        STATE.selectedRecyclerId = STATE.recyclersList[0].id;
+      }
+    } catch (err) {
+      if (err instanceof TypeError && /fetch|network|cors/i.test(err.message)) {
+        section.innerHTML = `<div class="error-box"><p>⚠️ CORS ERROR — backend failed.</p></div>`;
+        return;
+      }
+      renderRecyclerTabError(section, t("error"));
+      return;
+    }
+  }
+
+  const optionsHtml = STATE.recyclersList.map(rc =>
+    `<option value="${rc.id}" ${rc.id == STATE.selectedRecyclerId ? "selected" : ""}>
+      ${escHtml(rc.name)} (${escHtml(rc.facility_location)})
+    </option>`
+  ).join("");
+
+  section.innerHTML = `
+    <div class="field" style="margin-bottom:16px">
+      <label for="recycler-select" style="font-size:18px; font-weight:700">${t("chooseBuyer")}</label>
+      <select id="recycler-select" onchange="onRecyclerSelectChange(this.value)" style="min-height:56px; font-size:18px; font-weight:700">
+        ${optionsHtml}
+      </select>
+    </div>
+
+    <button class="btn btn-secondary mb" id="recycler-refresh-btn" onclick="loadRecyclerOffers()" style="min-height:56px; font-size:18px; margin-bottom:20px">
+      🔄 ${t("refresh")}
+    </button>
+
+    <div id="recycler-offers-list">
+      <div class="loading-box">
+        <div class="spinner" aria-hidden="true"></div>
+        <p class="loading-text">${t("loading")}</p>
+      </div>
+    </div>
+    <div style="height:60px"></div>`;
+
+  loadRecyclerOffers();
+}
+
+function renderRecyclerTabError(container, msg) {
+  container.innerHTML = `
+    <div class="error-box">
+      <p>${escHtml(msg)}</p>
+      <div class="stack mt">
+        <button class="btn btn-primary" onclick="renderRecycler()">${t("retry")}</button>
+      </div>
+    </div>`;
+}
+
+function onRecyclerSelectChange(val) {
+  STATE.selectedRecyclerId = parseInt(val, 10);
+  loadRecyclerOffers();
+}
+
+async function loadRecyclerOffers() {
+  const container = document.getElementById("recycler-offers-list");
+  if (!container || !STATE.selectedRecyclerId) return;
+
+  container.innerHTML = `
+    <div class="loading-box">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="loading-text">${t("loading")}</p>
+    </div>`;
+
+  try {
+    const res = await apiFetch(`/recyclers/${STATE.selectedRecyclerId}/offers`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      container.innerHTML = `
+        <div class="error-box">
+          <p>${escHtml(extractDetail(body) || t("error"))}</p>
+          <button class="btn btn-secondary btn-sm mt" onclick="loadRecyclerOffers()">${t("retry")}</button>
+        </div>`;
+      return;
+    }
+
+    const data = await res.json();
+    STATE.recyclerOffers = data.lots || [];
+    renderRecyclerOffersList(container);
+
+  } catch (err) {
+    if (err instanceof TypeError && /fetch|network|cors/i.test(err.message)) {
+      container.innerHTML = `<div class="error-box"><p>⚠️ CORS ERROR — backend failed.</p></div>`;
+      return;
+    }
+    container.innerHTML = `
+      <div class="error-box">
+        <p>${t("error")}</p>
+        <button class="btn btn-secondary btn-sm mt" onclick="loadRecyclerOffers()">${t("retry")}</button>
+      </div>`;
+  }
+}
+
+function renderRecyclerOffersList(container) {
+  if (!STATE.recyclerOffers.length) {
+    container.innerHTML = `<div class="empty-state">${t("noOffers")}</div>`;
+    return;
+  }
+
+  container.innerHTML = "";
+  STATE.recyclerOffers.forEach(lot => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.style.marginBottom = "16px";
+
+    const thumbHtml = lot.image_url
+      ? `<img src="${escHtml(lot.image_url)}" alt="माल की फोटो" class="scan-preview" style="max-height:220px; object-fit:cover; border-radius:12px; border:2px solid #ccc; width:100%; margin-bottom:12px">`
+      : "";
+
+    const statusBadge = `<span class="${statusBadgeClass(lot.status)}" style="font-size:18px; font-weight:700; padding:4px 14px">${escHtml(statusLabel(lot.status, true))}</span>`;
+
+    const catRows = (lot.categories || []).map(c => `
+      <div class="row-between" style="padding:6px 0; border-bottom:1px solid #eee; font-size:16px">
+        <span class="bold">${escHtml(catLabel(c.category))}</span>
+        <span class="bold">${c.weight_kg} kg</span>
+      </div>
+    `).join("");
+
+    const totalWeight = lot.total_weight_kg || (lot.categories || []).reduce((a, b) => a + (b.weight_kg || 0), 0);
+    const rateCardTotal = lot.offer?.rate_card_total || 0;
+
+    let actionSection = "";
+    if (lot.status === "offered") {
+      actionSection = `
+        <div style="margin-top:16px; border-top:2px solid #eee; padding-top:16px">
+          <div class="field" style="margin-bottom:12px">
+            <label for="quote-input-${lot.uuid}" style="font-size:18px; font-weight:700">${t("yourPrice")}</label>
+            <input
+              type="number"
+              id="quote-input-${lot.uuid}"
+              inputmode="numeric"
+              min="1"
+              step="1"
+              value="${rateCardTotal || 1}"
+              style="min-height:56px; font-size:22px; font-weight:700"
+            >
+            <div class="field-error" id="quote-err-${lot.uuid}" style="display:none"></div>
+          </div>
+          <button class="btn btn-primary" id="quote-btn-${lot.uuid}" onclick="sendQuoteForLot('${lot.uuid}')" style="min-height:56px; font-size:18px">
+            ${t("sendQuote")}
+          </button>
+        </div>`;
+    } else if (lot.status === "quoted") {
+      const quotedPrice = lot.offer?.quoted_price || 0;
+      actionSection = `
+        <div style="margin-top:16px; border-top:2px solid #eee; padding-top:16px">
+          <div class="card" style="border:2px solid var(--primary); background:#E8F5E9; padding:16px; margin:0">
+            <p class="bold" style="font-size:18px; color:#1B5E20">💬 ${t("quoteSent", quotedPrice)}</p>
+          </div>
+        </div>`;
+    } else if (lot.status === "closed") {
+      const agreedPrice = lot.offer?.quoted_price || rateCardTotal;
+      actionSection = `
+        <div style="margin-top:16px; border-top:2px solid #eee; padding-top:16px">
+          <div class="card" style="border:2px solid #1B5E20; background:#E8F5E9; padding:16px; margin:0">
+            <p class="bold" style="font-size:20px; color:#1B5E20">✅ ${t("dealDone")} — ₹${inr(agreedPrice)}</p>
+          </div>
+        </div>`;
+    }
+
+    card.innerHTML = `
+      ${thumbHtml}
+      <div style="margin-bottom:12px">${statusBadge}</div>
+
+      <div class="card" style="margin-bottom:12px; background:#fafafa; border:1px solid #eee">
+        ${catRows}
+        <div class="row-between bold" style="padding-top:8px; font-size:16px; color:#1B5E20">
+          <span>${t("totalWeightLabel")}</span>
+          <span>${totalWeight} kg</span>
+        </div>
+      </div>
+
+      <div style="margin-bottom:8px">
+        <div class="small" style="color:#555">${t("rateCardTotal")}</div>
+        <div class="price-big" style="font-size:40px; font-weight:700; color:#1B5E20; line-height:1.1">
+          ₹${inr(rateCardTotal)}
+        </div>
+      </div>
+
+      ${actionSection}`;
+
+    container.appendChild(card);
+  });
+}
+
+async function sendQuoteForLot(lotUuid) {
+  const inputEl = document.getElementById(`quote-input-${lotUuid}`);
+  const errEl   = document.getElementById(`quote-err-${lotUuid}`);
+  const btn     = document.getElementById(`quote-btn-${lotUuid}`);
+
+  if (errEl) errEl.style.display = "none";
+
+  const valStr = (inputEl?.value || "").trim();
+  const val = parseInt(valStr, 10);
+
+  if (isNaN(val) || val < 1) {
+    if (errEl) {
+      errEl.textContent = t("quotePriceError");
+      errEl.style.display = "block";
+    }
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = t("loading"); }
+
+  try {
+    const res = await apiFetch(`/lots/${lotUuid}/quote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        recycler_id: STATE.selectedRecyclerId,
+        price: val,
+      }),
+    });
+
+    if (res.status === 403) {
+      alert(t("quoteForbidden"));
+      if (btn) { btn.disabled = false; btn.textContent = t("sendQuote"); }
+      return;
+    }
+
+    if (res.status === 409) {
+      loadRecyclerOffers();
+      return;
+    }
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(extractDetail(body) || t("error"));
+      if (btn) { btn.disabled = false; btn.textContent = t("sendQuote"); }
+      return;
+    }
+
+    loadRecyclerOffers();
+
+  } catch (err) {
+    alert(t("error"));
+    if (btn) { btn.disabled = false; btn.textContent = t("sendQuote"); }
+  }
 }
