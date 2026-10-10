@@ -1,6 +1,6 @@
 /* ============================================================
    Kabadiwala Connect — app.js
-   Stage 1 + Stage 2: scan, review, create lot
+   Stage 1 + Stage 2 + Stage 3 (Lot Detail screen)
    ============================================================ */
 
 "use strict";
@@ -49,13 +49,9 @@ const T = {
     addressError:     "पता नहीं मिला, इलाका और शहर भी लिखें",
     submitLot:        "माल दर्ज करें",
     submitting:       "दर्ज हो रहा है...",
-    // lot-created screen
-    lotCreatedTitle:  "माल दर्ज हो गया! ✅",
-    lotCreatedSub:    "आपका माल सफलतापूर्वक दर्ज किया गया।",
-    lotCreatedId:     "UUID:",
-    goHome:           "होम पर जाएँ",
     // Screen 4 - lot detail
     lotDetail:        "माल की पूरी जानकारी",
+    totalWeightLabel: "कुल वज़न",
     safetyRules:      "सुरक्षा के नियम",
     findBuyer:        "खरीदार खोजें",
     waitingQuote:     "खरीदार के जवाब का इंतज़ार है",
@@ -65,26 +61,9 @@ const T = {
     agree:            "मंज़ूर है",
     viewReceipt:      "सौदे की रसीद देखें",
     listen:           "सुनें 🔊",
-    // Screen 5 - buyers
-    buyersTitle:      "खरीदार",
-    bestPrice:        "सबसे अच्छी कीमत",
-    authorized:       "CPCB से अधिकृत",
-    distKm:           (km, approx) => approx ? `लगभग ${km} किमी दूर` : `${km} किमी दूर`,
-    sendOffer:        "प्रस्ताव भेजें",
-    showMore:         "और दिखाएँ",
-    breakdown:        "श्रेणी-वार विवरण",
-    // Screen 6 - receipt
-    receiptTitle:     "सौदे की रसीद",
-    rateCardTotal:    "रेट कार्ड की कीमत",
-    agreedPrice:      "तय कीमत",
-    deviation:        (pct) => `रेट कार्ड से अंतर: ${pct}%`,
-    // Screen 7 - recycler
-    chooseBuyer:      "खरीदार चुनें",
-    refresh:          "नया देखें",
-    yourPrice:        "आपकी कीमत (₹)",
-    sendQuote:        "कीमत भेजें",
-    quoteSent:        (p) => `कीमत भेज दी: ₹${inr(p)}, कबाड़ी के जवाब का इंतज़ार`,
-    dealDone:         "सौदा पूरा",
+    // Placeholder stage 4
+    nextStep:         "अगला चरण",
+    nextStepTitle:    "अगला चरण (Stage 4 में आ रहा है)",
     // Category labels
     catMobilePhone:   "📱 मोबाइल फोन",
     catLaptop:        "💻 लैपटॉप",
@@ -134,11 +113,8 @@ const T = {
     addressError:     "Address not found. Add area and city.",
     submitLot:        "Register Lot",
     submitting:       "Registering...",
-    lotCreatedTitle:  "Lot Registered! ✅",
-    lotCreatedSub:    "Your lot has been registered successfully.",
-    lotCreatedId:     "UUID:",
-    goHome:           "Go to Home",
     lotDetail:        "Lot Details",
+    totalWeightLabel: "Total Weight",
     safetyRules:      "Safety Rules",
     findBuyer:        "Find Buyers",
     waitingQuote:     "Waiting for buyer's response",
@@ -148,35 +124,19 @@ const T = {
     agree:            "Accept",
     viewReceipt:      "View Receipt",
     listen:           "Listen 🔊",
-    buyersTitle:      "Buyers",
-    bestPrice:        "Best Price",
-    authorized:       "CPCB Authorized",
-    distKm:           (km, approx) => approx ? `~${km} km away` : `${km} km away`,
-    sendOffer:        "Send Offer",
-    showMore:         "Show More",
-    breakdown:        "Category Breakdown",
-    receiptTitle:     "Deal Receipt",
-    rateCardTotal:    "Rate Card Price",
-    agreedPrice:      "Agreed Price",
-    deviation:        (pct) => `Difference from rate card: ${pct}%`,
-    chooseBuyer:      "Choose Buyer",
-    refresh:          "Refresh",
-    yourPrice:        "Your Price (₹)",
-    sendQuote:        "Send Price",
-    quoteSent:        (p) => `Price sent: ₹${inr(p)}, waiting for collector`,
-    dealDone:         "Deal Complete",
+    nextStep:         "Next Step",
+    nextStepTitle:    "Next Step (Coming in Stage 4)",
     catMobilePhone:   "📱 Mobile Phone",
     catLaptop:        "💻 Laptop",
     catBattery:       "🔋 Battery",
-    catCableWire:     "🔌 Cable / Wire",
+    catCableWire:     "🔌 Cables & Wires",
     catCircuitBoard:  "🖥️ Circuit Board",
     catSmallAppliance:"⚡ Small Appliance",
     catLargeAppliance:"🏠 Large Appliance",
-    catOther:         "📦 Other",
+    catOther:         "📦 Other E-Waste",
   }
 };
 
-// Category key → translation key map
 const CAT_KEY_MAP = {
   mobile_phone:    "catMobilePhone",
   laptop:          "catLaptop",
@@ -188,15 +148,15 @@ const CAT_KEY_MAP = {
   other:           "catOther",
 };
 
-// ── HELPERS ────────────────────────────────────────────────────
+// Indian number formatting: 123456 → "1,23,456"
 function inr(n) {
-  if (n == null) return "—";
-  return Number(n).toLocaleString("en-IN");
+  if (n == null || isNaN(n)) return "0";
+  return Number(n).toLocaleString(STATE.lang === "hi" ? "hi-IN" : "en-IN");
 }
 
 function t(key, ...args) {
-  const lang = STATE.lang;
-  const val = T[lang][key];
+  const dict = T[STATE.lang] || T.hi;
+  const val  = dict[key] ?? T.hi[key];
   if (typeof val === "function") return val(...args);
   return val ?? key;
 }
@@ -222,17 +182,15 @@ function statusBadgeClass(status) {
   return `badge badge-${status}`;
 }
 
-// Fix 4: locale-aware date formatting
+// Locale-aware date formatting
 function formatDate(iso) {
   try {
     const d = new Date(iso);
     if (STATE.lang === "hi") {
-      // Hindi: Devanagari numerals + Hindi month names
       return d.toLocaleDateString("hi-IN", {
         day: "numeric", month: "short", year: "numeric"
       });
     } else {
-      // English: simple "11 Oct 2026"
       return d.toLocaleDateString("en-IN", {
         day: "numeric", month: "short", year: "numeric"
       });
@@ -249,6 +207,17 @@ function escHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
+function extractDetail(body) {
+  if (!body) return "";
+  if (typeof body.detail === "string") return body.detail;
+  if (Array.isArray(body.detail) && body.detail[0]) {
+    const d = body.detail[0];
+    if (typeof d === "string") return d;
+    if (d.msg) return d.msg;
+  }
+  return "";
+}
+
 // ── STATE ──────────────────────────────────────────────────────
 const STATE = {
   lang:          "hi",
@@ -260,19 +229,9 @@ const STATE = {
   currentLot:    null,
 
   // Stage 2
-  identifyBlob:  null,       // resized JPEG blob — the ONE blob used everywhere
+  identifyBlob:  null,       // resized JPEG blob
   identifyBlobURL: null,     // object URL for display
   reviewItems:   [],         // editable copy of identify results
-  // { id, name, category, box:{x,y,w,h} }
-
-  // Buyers
-  buyersPage:    1,
-  buyersAll:     [],
-  buyersHasMore: false,
-
-  // Recycler tab
-  selectedRecyclerId: null,
-  recyclerOffers: [],
 };
 
 // ── SCREEN MANAGER ─────────────────────────────────────────────
@@ -302,20 +261,19 @@ function refreshCurrentScreen() {
   const s = STATE.currentScreen;
   if (s === "home") renderHome();
   else if (s === "scan") {
-    /* scan re-renders itself via state; just update step text */
     const el = document.querySelector("#scan .step-line");
     if (el) el.textContent = t("step", 1, 4);
   }
   else if (s === "review") renderReview();
+  else if (s === "lot-detail" && STATE.currentLot) renderLotDetail(STATE.currentLot);
 }
 
-// ── TOP BAR ────────────────────────────────────────────────────
+// ── TOP BAR & TABS ─────────────────────────────────────────────
 function renderTopBar() {
   document.getElementById("app-name").textContent = t("appName");
   document.getElementById("lang-toggle").textContent = t("langToggle");
 }
 
-// ── TABS ───────────────────────────────────────────────────────
 function renderTabs() {
   document.getElementById("tab-collector").textContent = t("tabCollector");
   document.getElementById("tab-recycler").textContent  = t("tabRecycler");
@@ -341,37 +299,51 @@ async function apiFetch(path, opts = {}) {
   return res;
 }
 
-function extractDetail(body) {
-  if (!body || !body.detail) return null;
-  if (typeof body.detail === "string") return body.detail;
-  if (Array.isArray(body.detail)) {
-    return body.detail.map(e => e.msg || JSON.stringify(e)).join("; ");
-  }
-  return JSON.stringify(body.detail);
-}
+// ── INIT ───────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  renderTopBar();
+  renderTabs();
 
-// ── BOOT ───────────────────────────────────────────────────────
-async function loadCategories() {
-  try {
-    const res = await apiFetch("/categories");
-    if (res.ok) STATE.categories = await res.json();
-  } catch (_) {}
-}
+  document.getElementById("lang-toggle").addEventListener("click", toggleLang);
+  document.getElementById("tab-collector").addEventListener("click", () => switchTab("collector"));
+  document.getElementById("tab-recycler").addEventListener("click", () => switchTab("recycler"));
+
+  show("home");
+  initHome();
+});
 
 // ── SCREEN 1: HOME ─────────────────────────────────────────────
+async function initHome() {
+  const listEl = document.getElementById("my-lots-list");
+  listEl.innerHTML = `<div class="loading-box"><div class="spinner" aria-hidden="true"></div><p class="loading-text">${t("loading")}</p></div>`;
+
+  try {
+    const catRes = await apiFetch("/categories");
+    if (catRes.ok) {
+      STATE.categories = await catRes.json();
+    }
+  } catch (err) {
+    console.warn("Categories fetch failed:", err);
+  }
+
+  renderHome();
+}
+
 async function renderHome() {
   const section = document.getElementById("home");
+  const listEl  = document.getElementById("my-lots-list");
 
-  // Update button labels (Fix 2: gallery button uses secondary class, already done in HTML)
-  section.querySelector(".photo-btn-camera .photo-btn-label").textContent     = t("photoBtn");
-  section.querySelector(".photo-btn-gallery .photo-btn-label-secondary").textContent = t("galleryBtn");
-  section.querySelector(".my-lots-heading").textContent = t("myLots");
+  document.getElementById("camera-label").textContent  = t("photoBtn");
+  document.getElementById("gallery-label").textContent = t("galleryBtn");
+  document.getElementById("my-lots-title").textContent  = t("myLots");
 
-  const listEl = section.querySelector(".lots-list");
-  listEl.innerHTML = `<div class="loading-box">
-    <div class="spinner" aria-hidden="true"></div>
-    <p class="loading-text">${t("loading")}</p>
-  </div>`;
+  const cameraInput  = document.getElementById("camera-input");
+  const galleryInput = document.getElementById("gallery-input");
+
+  cameraInput.onchange  = e => { if (e.target.files[0]) handlePhotoSelected(e.target.files[0]); };
+  galleryInput.onchange = e => { if (e.target.files[0]) handlePhotoSelected(e.target.files[0]); };
+
+  listEl.innerHTML = `<div class="loading-box"><div class="spinner" aria-hidden="true"></div><p class="loading-text">${t("loading")}</p></div>`;
 
   try {
     const res = await apiFetch("/lots");
@@ -385,7 +357,7 @@ async function renderHome() {
     renderLotsList(listEl);
   } catch (err) {
     if (err instanceof TypeError && /fetch|network|cors/i.test(err.message)) {
-      listEl.innerHTML = `<div class="error-box"><p>⚠️ CORS ERROR — the backend is not sending the right CORS headers. This is a backend setting. Please fix it there.</p></div>`;
+      listEl.innerHTML = `<div class="error-box"><p>⚠️ CORS ERROR — backend failed.</p></div>`;
       return;
     }
     renderLotsError(listEl, null);
@@ -433,76 +405,14 @@ function renderLotsList(container) {
         ${priceHtml}
       </div>`;
 
-    btn.addEventListener("click", () => openLotDetail(lot));
+    btn.addEventListener("click", () => showLotDetail(lot.uuid));
     container.appendChild(btn);
-  });
-}
-
-function openLotDetail(lot) {
-  STATE.currentLot = lot;
-  show("lot-detail");
-  renderLotDetail();
-}
-
-// ── SCREEN 4: LOT DETAIL (stub — Stage 3 will complete) ───────
-function renderLotDetail() {
-  const section = document.getElementById("lot-detail");
-  if (!STATE.currentLot) { show("home"); return; }
-  const lot = STATE.currentLot;
-
-  const priceHtml = (lot.estimated_min != null && lot.estimated_max != null)
-    ? `<p class="price-range">${t("priceRange", lot.estimated_min, lot.estimated_max)}</p>`
-    : `<p class="price-range" style="font-size:24px">${t("noPrice")}</p>`;
-
-  const catsHtml = lot.categories.map(c =>
-    `<div class="row-between card">
-      <span class="bold">${escHtml(catLabel(c.category))}</span>
-      <span>${c.weight_kg} kg</span>
-    </div>`
-  ).join("");
-
-  section.innerHTML = `
-    <button class="btn btn-secondary btn-sm mb" onclick="show('home');renderHome()">← ${t("back")}</button>
-    <h1>${t("lotDetail")}</h1>
-    <span class="${statusBadgeClass(lot.status)}">${escHtml(statusLabel(lot.status))}</span>
-    <img src="${escHtml(lot.image_url)}" alt="माल की फोटो"
-         style="width:100%;max-height:240px;object-fit:cover;border-radius:8px;border:2px solid #ccc;margin:12px 0"
-         loading="lazy">
-    ${priceHtml}
-    <div class="stack">${catsHtml}</div>
-    <p class="small mt" style="color:#444">🗓️ ${formatDate(lot.created_at)}</p>
-    <p class="small" style="color:#888;margin-top:4px;font-style:italic">(पूरी जानकारी Stage 3 में)</p>`;
-}
-
-// ── SCREEN 7: RECYCLER (stub) ──────────────────────────────────
-function renderRecycler() {
-  const section = document.getElementById("recycler");
-  section.innerHTML = `<h1>${t("tabRecycler")}</h1><p class="small mt">(यह भाग Stage 3 में बनेगा)</p>`;
-}
-
-// ═══════════════════════════════════════════════════════════════
-// STAGE 2: PHOTO → SCAN → REVIEW → POST /lots
-// ═══════════════════════════════════════════════════════════════
-
-// ── PHOTO INPUT HANDLERS ───────────────────────────────────────
-function setupPhotoInputs() {
-  document.getElementById("camera-input").addEventListener("change", e => {
-    const file = e.target.files[0];
-    if (file) handlePhotoSelected(file);
-    e.target.value = "";
-  });
-  document.getElementById("gallery-input").addEventListener("change", e => {
-    const file = e.target.files[0];
-    if (file) handlePhotoSelected(file);
-    e.target.value = "";
   });
 }
 
 // ── STEP 1: RESIZE IMAGE ───────────────────────────────────────
 async function resizeImage(file) {
   const MAX = 1024;
-
-  // Create ImageBitmap respecting EXIF orientation
   const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
   const ow = bmp.width;
   const oh = bmp.height;
@@ -533,7 +443,6 @@ async function resizeImage(file) {
 
 // ── STEP 2: HANDLE PHOTO SELECTED ─────────────────────────────
 async function handlePhotoSelected(file) {
-  // Immediately show the scan screen with a loading state
   show("scan");
   const scan = document.getElementById("scan");
   scan.innerHTML = `
@@ -557,12 +466,10 @@ async function handlePhotoSelected(file) {
     return;
   }
 
-  // Revoke previous object URL to avoid memory leaks
   if (STATE.identifyBlobURL) URL.revokeObjectURL(STATE.identifyBlobURL);
   STATE.identifyBlob    = blob;
   STATE.identifyBlobURL = URL.createObjectURL(blob);
 
-  // Show photo preview while waiting for identify
   scan.innerHTML = `
     <div class="step-line">${t("step", 1, 4)}</div>
     <h1>${t("scanHeading")}</h1>
@@ -572,7 +479,6 @@ async function handlePhotoSelected(file) {
       <p class="loading-text">${t("scanLoading")}</p>
     </div>`;
 
-  // Call POST /identify
   try {
     const fd = new FormData();
     fd.append("image", blob, "photo.jpg");
@@ -592,7 +498,6 @@ async function handlePhotoSelected(file) {
     const data = await res.json();
     const items = data.items || [];
 
-    // Build editable review items with stable ids
     STATE.reviewItems = items.map((item, i) => ({
       id:       i,
       name:     item.name,
@@ -604,9 +509,8 @@ async function handlePhotoSelected(file) {
     renderReview();
 
   } catch (err) {
-    // CORS check
     if (err instanceof TypeError && /fetch|network|cors/i.test(err.message)) {
-      scan.innerHTML = `<div class="error-box"><p>⚠️ CORS ERROR — please fix on the backend.</p></div>`;
+      scan.innerHTML = `<div class="error-box"><p>⚠️ CORS ERROR — backend setting issue.</p></div>`;
       return;
     }
     showScanError(scan, t("scanFail"));
@@ -631,7 +535,6 @@ function renderReview() {
   const section = document.getElementById("review");
   const items   = STATE.reviewItems;
 
-  // ── Empty state ───────────────────────────────────────────
   if (items.length === 0) {
     section.innerHTML = `
       <div class="step-line">${t("step", 2, 4)}</div>
@@ -646,7 +549,6 @@ function renderReview() {
     return;
   }
 
-  // ── Build boxes overlay ───────────────────────────────────
   const boxColors = ["#D32F2F","#1565C0","#F57F17","#6A1B9A","#00695C","#E65100","#37474F","#880E4F"];
 
   let boxDivs = "";
@@ -666,12 +568,6 @@ function renderReview() {
       </div>`;
   });
 
-  // ── Build category options ────────────────────────────────
-  const catOptions = STATE.categories.map(c =>
-    `<option value="${escHtml(c.key)}">${escHtml(catLabel(c.key))}</option>`
-  ).join("");
-
-  // ── Build item cards ──────────────────────────────────────
   let itemCards = "";
   items.forEach((item, i) => {
     const color = boxColors[i % boxColors.length];
@@ -711,13 +607,12 @@ function renderReview() {
       </div>`;
   });
 
-  // ── Compute weight rows (one per category present) ────────
   const catGroups = computeCatGroups();
   let weightRows = "";
   catGroups.forEach(cg => {
     weightRows += `
       <div class="weight-row" id="weight-row-${cg.key}">
-        <label for="weight-${cg.key}">${catLabel(cg.key)} — ${t("weightLabel", "").replace(" — ", "").trim()}</label>
+        <label for="weight-${cg.key}">${catLabel(cg.key)} — वज़न (किलो)</label>
         <div class="small mb" style="color:#5A4000">${catLabel(cg.key)} का वज़न (किलो)</div>
         <input
           type="number"
@@ -729,14 +624,13 @@ function renderReview() {
           placeholder="0.0"
           value="${cg.weight || ""}"
           oninput="updateWeight('${cg.key}', this.value)"
-          aria-label="${catLabel(cg.key)} ${t("weightLabel", "")}"
+          aria-label="${catLabel(cg.key)} weight"
         >
         <div class="hint small">${t("weightHint")}</div>
         <div class="field-error" id="weight-err-${cg.key}" style="display:none"></div>
       </div>`;
   });
 
-  // ── Address field ─────────────────────────────────────────
   const savedAddr = STATE._reviewAddress || "";
   const addressField = `
     <div class="field" style="margin-top:20px" id="address-field">
@@ -753,7 +647,6 @@ function renderReview() {
       <div class="field-error" id="address-err" style="display:none"></div>
     </div>`;
 
-  // ── Compose full screen ───────────────────────────────────
   section.innerHTML = `
     <div class="step-line">${t("step", 2, 4)}</div>
     <h1>${t("reviewTitle")}</h1>
@@ -781,7 +674,6 @@ function renderReview() {
     >${t("submitLot")}</button>
     <div style="height:80px"></div>`;
 
-  // Restore saved weights
   catGroups.forEach(cg => {
     if (cg.weight) {
       const el = document.getElementById(`weight-${cg.key}`);
@@ -791,8 +683,7 @@ function renderReview() {
 }
 
 // ── WEIGHT STATE ───────────────────────────────────────────────
-// Persists weights across re-renders
-const _weights = {}; // key → string value
+const _weights = {};
 
 function computeCatGroups() {
   const groups = {};
@@ -811,7 +702,6 @@ function updateWeight(catKey, val) {
   _weights[catKey] = val;
 }
 
-// ── ITEM MUTATIONS ─────────────────────────────────────────────
 function updateItemName(id, val) {
   const item = STATE.reviewItems.find(i => i.id === id);
   if (item) item.name = val;
@@ -823,18 +713,15 @@ function updateItemCategory(id, val) {
   const oldCat = item.category;
   item.category = val;
 
-  // Re-render only the weight rows section (avoid full re-render which loses input focus)
   const catGroups = computeCatGroups();
   const weightContainer = document.getElementById("weight-rows");
   if (!weightContainer) return;
 
-  // Remove weight row for old category if no more items in it
   const oldGroup = catGroups.find(cg => cg.key === oldCat);
   if (!oldGroup) {
     const oldRow = document.getElementById(`weight-row-${oldCat}`);
     if (oldRow) oldRow.remove();
   }
-  // Add weight row for new category if it wasn't there
   const newGroup = catGroups.find(cg => cg.key === val);
   if (newGroup && !document.getElementById(`weight-row-${val}`)) {
     const div = document.createElement("div");
@@ -852,7 +739,7 @@ function updateItemCategory(id, val) {
         placeholder="0.0"
         value="${_weights[val] || ""}"
         oninput="updateWeight('${val}', this.value)"
-        aria-label="${catLabel(val)} weight kg"
+        aria-label="${catLabel(val)} weight"
       >
       <div class="hint small">${t("weightHint")}</div>
       <div class="field-error" id="weight-err-${val}" style="display:none"></div>`;
@@ -862,13 +749,11 @@ function updateItemCategory(id, val) {
 
 function removeItem(id) {
   STATE.reviewItems = STATE.reviewItems.filter(i => i.id !== id);
-  // Re-render the whole review to update boxes + renumber
   renderReview();
 }
 
 // ── SUBMIT LOT ─────────────────────────────────────────────────
 async function submitLot() {
-  // Collect current weight values from DOM (in case user typed without triggering oninput)
   document.querySelectorAll("[data-cat]").forEach(el => {
     _weights[el.dataset.cat] = el.value;
   });
@@ -876,11 +761,9 @@ async function submitLot() {
   const address = (document.getElementById("review-address")?.value || "").trim();
   STATE._reviewAddress = address;
 
-  // ── Validation ────────────────────────────────────────────
   let valid = true;
   const catGroups = computeCatGroups();
 
-  // Weights
   catGroups.forEach(cg => {
     const errEl = document.getElementById(`weight-err-${cg.key}`);
     const w = parseFloat(_weights[cg.key] || "0");
@@ -892,7 +775,6 @@ async function submitLot() {
     }
   });
 
-  // Address
   const addrErr = document.getElementById("address-err");
   if (!address) {
     if (addrErr) { addrErr.textContent = t("addressRequired"); addrErr.style.display = "block"; }
@@ -903,13 +785,11 @@ async function submitLot() {
 
   if (!valid) return;
 
-  // ── Disable button, show spinner ──────────────────────────
   const btn = document.getElementById("submit-lot-btn");
   if (btn) { btn.disabled = true; btn.textContent = t("submitting"); }
   const globalErr = document.getElementById("submit-err");
   if (globalErr) globalErr.style.display = "none";
 
-  // ── Build multipart body ──────────────────────────────────
   const categoriesPayload = catGroups.map(cg => ({
     category:  cg.key,
     weight_kg: parseFloat(_weights[cg.key]),
@@ -951,17 +831,13 @@ async function submitLot() {
 
     const lot = await res.json();
 
-    // Add to local lots list so it appears on Home immediately
     STATE.lots = [lot, ...STATE.lots.filter(l => l.uuid !== lot.uuid)];
-
-    // Clear review state
     STATE.reviewItems = [];
     STATE._reviewAddress = "";
     Object.keys(_weights).forEach(k => delete _weights[k]);
 
-    // Navigate to temporary success screen
-    show("lot-created");
-    renderLotCreated(lot);
+    // Go straight to Screen 4 (lot detail)
+    showLotDetail(lot.uuid);
 
   } catch (err) {
     if (err instanceof TypeError && /fetch|network|cors/i.test(err.message)) {
@@ -976,45 +852,227 @@ async function submitLot() {
   }
 }
 
-// ── LOT-CREATED SCREEN ─────────────────────────────────────────
-function renderLotCreated(lot) {
-  const section = document.getElementById("lot-created");
-  const priceHtml = (lot.estimated_min != null && lot.estimated_max != null)
-    ? `<p class="price-big" style="margin:16px 0">${t("priceRange", lot.estimated_min, lot.estimated_max)}</p>`
-    : `<p style="font-size:20px;margin:16px 0;color:#555">${t("noPrice")}</p>`;
-
+// ── SCREEN 4: LOT DETAIL (Stage 3) ─────────────────────────────
+async function showLotDetail(lotUuid) {
+  show("lot-detail");
+  const section = document.getElementById("lot-detail");
   section.innerHTML = `
-    <div class="success-box">
-      <span class="success-icon">✅</span>
-      <h1>${t("lotCreatedTitle")}</h1>
-      <p>${t("lotCreatedSub")}</p>
-      ${priceHtml}
-      <p class="small" style="color:#555;margin-top:4px">${t("lotCreatedId")}</p>
-      <div class="success-uuid">${escHtml(lot.uuid)}</div>
-      <button class="btn btn-primary mt" onclick="goHomeFromSuccess()">${t("goHome")}</button>
+    <button class="btn btn-secondary btn-sm mb" onclick="show('home');renderHome()">${t("back")}</button>
+    <div class="loading-box">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="loading-text">${t("loading")}</p>
+    </div>`;
+
+  try {
+    const res = await apiFetch(`/lots/${lotUuid}`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      renderLotDetailError(section, lotUuid, extractDetail(body) || t("error"));
+      return;
+    }
+    const lot = await res.json();
+    STATE.currentLot = lot;
+    renderLotDetail(lot);
+  } catch (err) {
+    if (err instanceof TypeError && /fetch|network|cors/i.test(err.message)) {
+      section.innerHTML = `
+        <button class="btn btn-secondary btn-sm mb" onclick="show('home');renderHome()">${t("back")}</button>
+        <div class="error-box"><p>⚠️ CORS ERROR — backend failed.</p></div>`;
+      return;
+    }
+    renderLotDetailError(section, lotUuid, t("error"));
+  }
+}
+
+function renderLotDetailError(container, lotUuid, msg) {
+  container.innerHTML = `
+    <button class="btn btn-secondary btn-sm mb" onclick="show('home');renderHome()">${t("back")}</button>
+    <div class="error-box">
+      <p>${escHtml(msg)}</p>
+      <div class="stack mt">
+        <button class="btn btn-primary" onclick="showLotDetail('${lotUuid}')">${t("retry")}</button>
+      </div>
     </div>`;
 }
 
-function goHomeFromSuccess() {
-  show("home");
-  renderHome();
+function groupSafetyRules(guidelines) {
+  const groups = [];
+  const map = {};
+  (guidelines || []).forEach(rule => {
+    const cat = rule.category;
+    if (!map[cat]) {
+      map[cat] = [];
+      groups.push({ category: cat, rules: map[cat] });
+    }
+    map[cat].push(rule);
+  });
+  return groups;
 }
 
-// ── INIT ───────────────────────────────────────────────────────
-async function init() {
-  renderTopBar();
-  renderTabs();
+function renderLotDetail(lot) {
+  const section = document.getElementById("lot-detail");
 
-  document.getElementById("lang-toggle").addEventListener("click", toggleLang);
-  document.getElementById("tab-collector").addEventListener("click", () => switchTab("collector"));
-  document.getElementById("tab-recycler").addEventListener("click",  () => switchTab("recycler"));
+  // 1. Photo thumbnail + Status badge
+  const statusBadge = `<span class="${statusBadgeClass(lot.status)}" style="font-size:18px; font-weight:700; padding:6px 16px">${escHtml(statusLabel(lot.status))}</span>`;
+  const photoHtml   = lot.image_url
+    ? `<img src="${escHtml(lot.image_url)}" alt="माल की फोटो" class="scan-preview" style="max-height:260px; object-fit:cover; border-radius:12px; border:2px solid #ccc; width:100%; margin-bottom:12px">`
+    : "";
 
-  setupPhotoInputs();
+  // 2. Price range (BIGGEST text)
+  const priceHtml = (lot.estimated_min != null && lot.estimated_max != null)
+    ? `<div class="price-big" style="font-size:32px; font-weight:700; color:#1B5E20; line-height:1.2">${t("priceRange", lot.estimated_min, lot.estimated_max)}</div>`
+    : `<div class="price-big" style="font-size:24px; font-weight:700; color:#C8860A">${t("noPrice")}</div>`;
 
-  await loadCategories();
+  // 3. Categories & total weight
+  const catRows = (lot.categories || []).map(c => `
+    <div class="row-between" style="padding:8px 0; border-bottom:1px solid #eee">
+      <span class="bold" style="font-size:17px">${escHtml(catLabel(c.category))}</span>
+      <span class="bold" style="font-size:17px">${c.weight_kg} kg</span>
+    </div>
+  `).join("");
 
-  show("home");
-  await renderHome();
+  const totalWeight = lot.total_weight_kg || (lot.categories || []).reduce((a, b) => a + (b.weight_kg || 0), 0);
+
+  const categoriesCard = `
+    <div class="card" style="margin-bottom:20px">
+      <h3 style="font-size:18px; margin-bottom:8px">${t("itemCategory")}</h3>
+      ${catRows}
+      <div class="row-between bold" style="padding-top:12px; font-size:18px; color:#1B5E20">
+        <span>${t("totalWeightLabel")}</span>
+        <span>${totalWeight} kg</span>
+      </div>
+    </div>`;
+
+  // 4. Safety Guidelines cards (grouped by category in amber warning style)
+  const safetyGroups = groupSafetyRules(lot.safety_guidelines);
+  let safetyHtml = "";
+  if (safetyGroups.length > 0) {
+    const groupCards = safetyGroups.map(group => `
+      <div style="margin-bottom:16px">
+        <h3 style="font-size:18px; margin-bottom:8px; color:#1B5E20">${escHtml(catLabel(group.category))}</h3>
+        ${group.rules.map(rule => `
+          <div class="card-warning" style="background:#FFE8B0; border:2px solid #C8860A; color:#5A3600; padding:14px; border-radius:12px; margin-bottom:10px">
+            <div class="bold" style="font-size:18px; margin-bottom:6px; color:#5A3600">${escHtml(rule.hazard_type)}</div>
+            <div style="font-size:16px; line-height:1.4; color:#5A3600">${escHtml(rule.rule_text)}</div>
+          </div>
+        `).join("")}
+      </div>
+    `).join("");
+
+    safetyHtml = `
+      <div style="margin-bottom:24px">
+        <h2 style="font-size:22px; margin-bottom:12px">⚠️ ${t("safetyRules")}</h2>
+        ${groupCards}
+      </div>`;
+  }
+
+  // 5. Action area based on status
+  let actionHtml = "";
+  if (lot.status === "created") {
+    actionHtml = `
+      <button class="btn btn-primary" onclick="showPlaceholder('buyers', '${lot.uuid}')">${t("findBuyer")}</button>`;
+  } else if (lot.status === "offered") {
+    const recycler = lot.offer?.recycler;
+    actionHtml = `
+      <div class="card" style="margin-bottom:16px; border:2px solid var(--primary)">
+        <p class="bold" style="font-size:18px; color:var(--primary); margin-bottom:6px">⏳ ${t("waitingQuote")}</p>
+        ${recycler ? `
+          <div style="margin-top:8px">
+            <p class="bold" style="font-size:18px">${escHtml(recycler.name)}</p>
+            <p class="small" style="color:#555">📍 ${escHtml(recycler.facility_location)}</p>
+          </div>
+        ` : ""}
+      </div>
+      <button class="btn btn-secondary" id="withdraw-btn" onclick="withdrawOffer('${lot.uuid}')">${t("withdraw")}</button>`;
+  } else if (lot.status === "quoted") {
+    const quotedPrice   = lot.offer?.quoted_price || 0;
+    const rateCardTotal = lot.offer?.rate_card_total || 0;
+    actionHtml = `
+      <div class="card" style="margin-bottom:16px; border:2px solid var(--primary)">
+        <p class="small" style="color:#555; margin-bottom:4px">${t("buyerPrice")}</p>
+        <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:8px">
+          <span class="price-big" style="font-size:32px; font-weight:700; color:#1B5E20">₹${inr(quotedPrice)}</span>
+          <span class="small" style="color:#666">(${t("rateCardPrice")}: ₹${inr(rateCardTotal)})</span>
+        </div>
+        ${lot.offer?.recycler ? `
+          <div style="margin-top:8px; border-top:1px dashed #ccc; padding-top:8px">
+            <p class="bold">${escHtml(lot.offer.recycler.name)}</p>
+          </div>
+        ` : ""}
+      </div>
+      <div class="stack">
+        <button class="btn btn-primary" onclick="showPlaceholder('agree', '${lot.uuid}')">${t("agree")}</button>
+        <button class="btn btn-secondary mb" id="withdraw-btn" onclick="withdrawOffer('${lot.uuid}')">${t("withdraw")}</button>
+      </div>`;
+  } else if (lot.status === "closed") {
+    const auditUuid = lot.audit_uuid || lot.uuid;
+    actionHtml = `
+      <button class="btn btn-primary" onclick="showPlaceholder('receipt', '${auditUuid}')">${t("viewReceipt")}</button>`;
+  }
+
+  section.innerHTML = `
+    <button class="btn btn-secondary btn-sm mb" onclick="show('home');renderHome()">${t("back")}</button>
+
+    <div style="margin-bottom:16px">
+      ${photoHtml}
+      <div style="margin-top:8px; margin-bottom:12px">${statusBadge}</div>
+    </div>
+
+    <div style="margin-bottom:20px">
+      ${priceHtml}
+    </div>
+
+    ${categoriesCard}
+
+    ${safetyHtml}
+
+    <div id="lot-detail-action" style="margin-top:24px">
+      ${actionHtml}
+    </div>
+
+    <div style="height:60px"></div>`;
 }
 
-document.addEventListener("DOMContentLoaded", init);
+// ── WITHDRAW OFFER ─────────────────────────────────────────────
+async function withdrawOffer(lotUuid) {
+  const btn = document.getElementById("withdraw-btn");
+  if (btn) { btn.disabled = true; btn.textContent = t("loading"); }
+
+  try {
+    const res = await apiFetch(`/lots/${lotUuid}/withdraw`, { method: "POST" });
+    if (res.status === 409) {
+      showLotDetail(lotUuid);
+      return;
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(extractDetail(body) || t("error"));
+      if (btn) { btn.disabled = false; btn.textContent = t("withdraw"); }
+      return;
+    }
+    showLotDetail(lotUuid);
+  } catch (err) {
+    alert(t("error"));
+    if (btn) { btn.disabled = false; btn.textContent = t("withdraw"); }
+  }
+}
+
+// ── STAGE 4 PLACEHOLDER ────────────────────────────────────────
+function showPlaceholder(type, refId) {
+  show("buyers");
+  const buyersSec = document.getElementById("buyers");
+  buyersSec.innerHTML = `
+    <button class="btn btn-secondary btn-sm mb" onclick="showLotDetail('${refId}')">${t("back")}</button>
+    <h1>${t("nextStep")}</h1>
+    <div class="card" style="margin-top:20px; text-align:center; padding:32px var(--pad)">
+      <p style="font-size:36px; margin-bottom:12px">🚀</p>
+      <p class="bold" style="font-size:22px">${t("nextStepTitle")}</p>
+      <p class="small mt" style="color:#666">(Stage 4 feature — ${escHtml(type)})</p>
+    </div>`;
+}
+
+// ── SCREEN 7: RECYCLER (stub) ──────────────────────────────────
+function renderRecycler() {
+  const section = document.getElementById("recycler");
+  section.innerHTML = `<h1>${t("tabRecycler")}</h1><p class="small mt">(Stage 4 feature)</p>`;
+}

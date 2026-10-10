@@ -57,7 +57,7 @@
           capture="environment"
           aria-label="कैमरे से फोटो खींचें"
         >
-        <span class="photo-btn-label">📷 फोटो खींचें</span>
+        <span id="camera-label" class="photo-btn-label">📷 फोटो खींचें</span>
       </div>
 
       <div class="photo-btn-wrap photo-btn-gallery" style="margin-bottom:24px">
@@ -67,12 +67,12 @@
           accept="image/*"
           aria-label="गैलरी से फोटो चुनें"
         >
-        <span class="photo-btn-label-secondary">🖼️ गैलरी से चुनें</span>
+        <span id="gallery-label" class="photo-btn-label-secondary">🖼️ गैलरी से चुनें</span>
       </div>
 
       <!-- My lots list -->
-      <h2 class="my-lots-heading">मेरा माल</h2>
-      <div class="lots-list" aria-live="polite" aria-label="माल की सूची">
+      <h2 id="my-lots-title" class="my-lots-heading">मेरा माल</h2>
+      <div id="my-lots-list" class="lots-list" aria-live="polite" aria-label="माल की सूची">
         <!-- Populated by JS -->
       </div>
     </section>
