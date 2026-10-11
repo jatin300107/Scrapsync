@@ -1,26 +1,66 @@
 # Kabadiwala Connect
 
-**Photograph e-waste, get a fair price range, and agree a deal with an authorized recycler, in Hindi, on a phone.**
+**A kabadiwala photographs his scrap and sees what several authorized recyclers will pay for it, so he can sell to the best one.**
 
 Built for the AWS Bharat Builds Tour Environmental Hacks (WeMakeDevs), Waste and Energy track.
 
-- Live app: [https://main.dbidovmuqj3gr.amplifyapp.com/]
+- Live app: https://main.dbidovmuqj3gr.amplifyapp.com/
 - Demo video: [VIDEO URL]
 - Backend API docs: https://a7rrl45olio4npjxbkiuatnl7m0iyhdb.lambda-url.ap-southeast-2.on.aws/docs
-- Team: [Scrapsync]
+- Team: Scrapsync
+
+## Why would a collector use this?
+
+**Because it can put more money in his hand.**
+
+A collector does not choose a buyer for environmental reasons. He sells to the buyer he knows, at whatever price that buyer names, because he has nobody to compare against. With one buyer, the buyer sets the price.
+
+Kabadiwala Connect gives him a choice. He photographs his scrap, enters the weight, and sees every authorized recycler that buys it, each with its price for his exact lot, best price first. He picks one and gets a written record of the agreed price.
+
+In our demo data, one lot of circuit boards and cables is priced at ₹430, ₹396, ₹344 and ₹310 by four different recyclers, so the top offer is about 39% above the lowest. The rates are seeded demo data, not real market prices, but the mechanism is the point: when buyers compete for his scrap, the price goes up, and he does not need to understand regulations or the environment to benefit.
+
+It costs him nothing to try. He needs a photo, a rough weight and an address, and he is free to sell to someone else if the offers are not good enough.
+
+Along the way he also gets:
+- **Authorized buyers.** Every recycler shows its authorization status.
+- **A record of the deal.** The agreed price is written down next to the rate card price.
+- **Safety rules in Hindi and English** for exactly what is in his lot, such as batteries or cable burning.
 
 ## The problem
 
-Informal e-waste collectors (kabadiwalas) sell what they collect to whoever offers a price. They usually have no way to know what a fair price is, no guidance on the hazards of what they handle (lithium batteries, burnt cable insulation, circuit boards), and no record of the deal afterwards. The recycler sets the price, and the collector has nothing to compare it to.
+India's informal e-waste collectors handle most of the country's collection but sit outside the formal EPR (Extended Producer Responsibility) recycling chain. About 78% of India's e-waste is processed by the informal sector (NITI Aayog and TERI, 2026). Informal processing recovers only 10 to 20% of the material, while formal facilities recover 95 to 97%. The rest is lost value, and informal methods such as burning cable insulation and acid-leaching circuit boards contaminate soil and water with heavy metals.
 
-## What it does
+Collectors keep selling informally because those buyers are nearby and familiar, and the collector has no way to compare prices, find authorized recyclers, or keep a record of the deal. Livelihood decides where the material goes, so the formal route has to win on money first.
 
-1. **Scan.** The collector takes a photo of a pile. AI detects the e-waste items and draws numbered boxes on the photo.
-2. **Review.** The collector corrects the result: rename an item, change its category, or remove a wrong detection. The AI proposes and the human decides. Items cannot be added, so a bad detection can never silently change the price.
-3. **Register.** The collector enters one weight per category and an address. The app creates a lot with an estimated price range and category-specific safety rules.
-4. **Match.** Authorized recyclers that buy every category in the lot are listed, best price first, with distance shown for information.
-5. **Offer and quote.** The collector sends the lot to one recycler. That recycler sees it in their own view and replies with a price.
-6. **Agree.** The collector accepts. An audit record is created, showing the agreed price against the rate-card price and the percentage difference.
+## Why this is also better for the environment
+
+The collector chooses on price, and the price choice moves the material to the right place.
+
+- Every recycler in the app is authorized, so a lot that goes through the app ends up at an authorized facility and not an informal one.
+- Authorized facilities operate under CPCB authorization with environmental conditions, and recover 95 to 97% of the material, against 10 to 20% informally. A facility that recovers more from the same lot can afford to pay more for it. That is our reasoning, and we have not measured it.
+- The collector does not have to care about any of this. The money brings him in, and the environmental benefit comes with the sale.
+
+We do not measure how much material the app diverts. The claim is about direction: each deal moves a lot from the informal chain to the formal one.
+
+## How the app answers it
+
+| Gap | What the app does |
+| --- | --- |
+| No price transparency | Estimated price range from the photo and weights, then every eligible recycler's price with a per-category breakdown, best price first. |
+| Does not know who is authorized | Lists recyclers that buy every category in the lot, with authorization status and location. |
+| Distance and convenience | Address typed once. Road distance is shown beside each price, so he can weigh a farther buyer against a better price. |
+| No record of the deal | On agreement, an audit record stores the lot, recycler, weights, rate card price, agreed price and the difference as a percentage. |
+| Unsafe handling | Safety rules per category in Hindi and English, with the CPCB or E-Waste Rules source reference. |
+| Language and literacy | Hindi by default with an English toggle, one main action per screen, large text, high contrast, and an icon beside every category. |
+
+## How it works
+
+1. **Scan.** He takes a photo. AI detects the items and draws numbered boxes.
+2. **Review.** He renames, recategorises or removes items. He cannot add any, so a wrong detection can never raise the price.
+3. **Register.** He enters one weight per category and an address, and gets a price range and safety rules.
+4. **Match.** Authorized recyclers are listed, best price first, with distance shown.
+5. **Offer and quote.** He sends the lot to one recycler, who replies with a price in their own view.
+6. **Agree.** He accepts, and a deal record is created.
 
 ## Architecture
 
@@ -126,3 +166,7 @@ We want to be clear about what this is and is not.
 - Collector and recycler authentication.
 - Review of the Hindi text and safety content by a native speaker and a safety professional, and field testing with real collectors.
 - Voice guidance for users who cannot read.
+
+## Source
+
+NITI Aayog and TERI, *Advancing Circular Economy of Waste Electronic and Electrical Equipment (E-waste) and Lithium-Ion Batteries in India* (January 2026): https://www.niti.gov.in/node/2108
