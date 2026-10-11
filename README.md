@@ -5,7 +5,7 @@
 Built for the AWS Bharat Builds Tour Environmental Hacks (WeMakeDevs), Waste and Energy track.
 
 - Live app: https://main.dbidovmuqj3gr.amplifyapp.com/
-- Demo video: [VIDEO URL]
+- Demo video: https://www.youtube.com/watch?v=D-zfJFgcR30
 - Backend API docs: https://a7rrl45olio4npjxbkiuatnl7m0iyhdb.lambda-url.ap-southeast-2.on.aws/docs
 - Team: Scrapsync
 
