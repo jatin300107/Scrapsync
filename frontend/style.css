@@ -25,7 +25,7 @@
   --warning-bg:   #FFE8B0;
   --warning-text: #5A3600;
   --error:        #B00020;
-  --card-bd:      #1B1B1B;
+  --card-bd:      #D9CFB4;
   --muted-bg:     #F0EAD6;
   --price-color:  #1B5E20;
   --status-created-bg:  #E8F5E9;
@@ -50,7 +50,9 @@
   --gap:   12px;
   --gap-l: 20px;
   --pad:   16px;
-  --radius: 8px;
+  --radius: 16px;
+  --radius-input: 12px;
+  --radius-btn: 14px;
 
   /* Targets */
   --tap: 56px;
@@ -75,11 +77,13 @@ body {
 /* ── LAYOUT WRAPPER ─────────────────────────────────────────── */
 #app {
   max-width: 480px;
+  width: 100%;
   margin: 0 auto;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   background: var(--bg);
+  overflow-x: hidden;
 }
 
 /* ── TOP BAR ────────────────────────────────────────────────── */
@@ -109,7 +113,7 @@ body {
   background: var(--secondary-bg);
   color: var(--primary);
   border: 2px solid var(--primary-text);
-  border-radius: var(--radius);
+  border-radius: var(--radius-input);
   font-family: var(--font);
   font-size: var(--small);
   font-weight: 700;
@@ -180,7 +184,7 @@ section.active {
   margin-bottom: var(--gap);
   padding: 6px 10px;
   background: var(--muted-bg);
-  border-radius: var(--radius);
+  border-radius: var(--radius-input);
   display: inline-block;
 }
 
@@ -206,7 +210,7 @@ h3 {
   font-size: var(--btn);
   font-weight: 700;
   line-height: var(--lh);
-  border-radius: var(--radius);
+  border-radius: var(--radius-btn);
   border: none;
   min-height: var(--tap);
   padding: 12px var(--pad);
@@ -228,18 +232,21 @@ h3 {
 .btn-primary {
   background: var(--primary);
   color: var(--primary-text);
+  border-radius: var(--radius-btn);
 }
 
 .btn-secondary {
   background: var(--secondary-bg);
   color: var(--primary);
   border: 3px solid var(--primary);
+  border-radius: var(--radius-btn);
 }
 
 .btn-danger {
   background: var(--secondary-bg);
   color: var(--error);
   border: 3px solid var(--error);
+  border-radius: var(--radius-btn);
 }
 
 .btn-sm {
@@ -248,6 +255,7 @@ h3 {
   padding: 8px 14px;
   width: auto;
   display: inline-block;
+  border-radius: var(--radius-btn);
 }
 
 /* ── BIG PHOTO BUTTON ───────────────────────────────────────── */
@@ -279,7 +287,7 @@ h3 {
   font-family: var(--font);
   font-size: 24px;
   font-weight: 700;
-  border-radius: var(--radius);
+  border-radius: var(--radius-btn);
   padding: 14px var(--pad);
   cursor: pointer;
   border: none;
@@ -300,7 +308,7 @@ h3 {
   font-family: var(--font);
   font-size: 24px;
   font-weight: 700;
-  border-radius: var(--radius);
+  border-radius: var(--radius-btn);
   padding: 14px var(--pad);
   cursor: pointer;
   border: 3px solid var(--primary);
@@ -308,7 +316,7 @@ h3 {
   pointer-events: none;
 }
 
-/* ── INPUTS ─────────────────────────────────────────────────── */
+/* ── INPUTS (STRONG ACCESSIBILITY: 2px solid #1B1B1B, border-radius 12px) ── */
 .field {
   margin-bottom: var(--gap-l);
 }
@@ -322,14 +330,17 @@ h3 {
 
 .field input,
 .field select,
-.field textarea {
+.field textarea,
+input[type="text"],
+input[type="number"],
+select {
   width: 100%;
   font-family: var(--font);
   font-size: var(--base);
   color: var(--text);
   background: var(--secondary-bg);
-  border: 2px solid var(--card-bd);
-  border-radius: var(--radius);
+  border: 2px solid #1B1B1B;
+  border-radius: var(--radius-input);
   padding: 12px var(--pad);
   min-height: var(--tap);
   line-height: var(--lh);
@@ -337,7 +348,10 @@ h3 {
 
 .field input:focus,
 .field select:focus,
-.field textarea:focus {
+.field textarea:focus,
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus {
   outline: 3px solid var(--primary);
   outline-offset: 2px;
 }
@@ -356,37 +370,39 @@ h3 {
   margin-top: 6px;
 }
 
-/* ── CARDS ──────────────────────────────────────────────────── */
+/* ── CARDS (SOFTENED CONTAINERS: 1px #D9CFB4, radius 16px, soft shadow) ── */
 .card {
   background: var(--secondary-bg);
-  border: 2px solid var(--card-bd);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius);
-  padding: var(--pad);
-  margin-bottom: var(--gap);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+  margin-bottom: 16px;
 }
 
 .card-warning {
-  background: var(--warning-bg);
-  border: 2px solid #C8860A;
-  border-radius: var(--radius);
-  padding: var(--pad);
-  margin-bottom: var(--gap);
-  color: var(--warning-text);
+  background: #FFE8B0 !important;
+  border: 1px solid #E0B860 !important;
+  border-radius: var(--radius) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+  padding: 16px !important;
+  margin-bottom: 16px !important;
+  color: #5A3600 !important;
 }
 
 .card-warning h3 {
-  color: var(--warning-text);
+  color: #5A3600;
   font-size: var(--base);
   font-weight: 700;
   margin-bottom: 6px;
 }
 
-/* ── STATUS BADGES ──────────────────────────────────────────── */
+/* ── STATUS BADGES (pill shape: border-radius 999px) ────────── */
 .badge {
   display: inline-block;
-  font-size: 18px;        /* Fix 3: at least 18px, bold */
+  font-size: 18px;
   font-weight: 700;
-  border-radius: 20px;
+  border-radius: 999px;
   padding: 4px 14px;
 }
 
@@ -394,7 +410,7 @@ h3 {
 .badge-offered  { background: var(--status-offered-bg);  color: var(--status-offered-txt); }
 .badge-quoted   { background: var(--status-quoted-bg);   color: var(--status-quoted-txt);  }
 .badge-closed   { background: var(--status-closed-bg);   color: var(--status-closed-txt);  }
-.badge-auth     { background: #E8F5E9; color: #1B5E20; border: 1px solid #1B5E20; }
+.badge-auth     { background: #E8F5E9; color: #1B5E20; border: 1px solid #1B5E20; border-radius: 999px; }
 
 /* ── PRICE TEXT ─────────────────────────────────────────────── */
 .price-big {
@@ -412,13 +428,14 @@ h3 {
   margin: var(--gap) 0;
 }
 
-/* ── LOT LIST ITEM ──────────────────────────────────────────── */
+/* ── LOT LIST ITEM (Home cards: 1px #D9CFB4, radius 16px, soft shadow) ── */
 .lot-item {
   background: var(--secondary-bg);
-  border: 2px solid var(--card-bd);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius);
-  padding: var(--pad);
-  margin-bottom: var(--gap);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+  margin-bottom: 16px;
   cursor: pointer;
   display: flex;
   gap: var(--gap);
@@ -437,8 +454,8 @@ h3 {
   width: 72px;
   height: 72px;
   object-fit: cover;
-  border-radius: 6px;
-  border: 1px solid #ccc;
+  border-radius: 10px;
+  border: 1px solid var(--card-bd);
   flex-shrink: 0;
 }
 
@@ -446,8 +463,8 @@ h3 {
   width: 72px;
   height: 72px;
   background: var(--muted-bg);
-  border-radius: 6px;
-  border: 1px solid #ccc;
+  border-radius: 10px;
+  border: 1px solid var(--card-bd);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -512,7 +529,7 @@ h3 {
 .error-box {
   background: #FFEBEE;
   border: 2px solid var(--error);
-  border-radius: var(--radius);
+  border-radius: var(--radius-input);
   padding: var(--pad);
   margin: var(--gap) 0;
   color: var(--error);
@@ -589,7 +606,8 @@ h3 {
 .scan-preview {
   width: 100%;
   border-radius: var(--radius);
-  border: 2px solid var(--card-bd);
+  border: 1px solid var(--card-bd);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   display: block;
   margin-bottom: var(--gap);
   max-height: 300px;
@@ -602,8 +620,9 @@ h3 {
   position: relative;
   width: 100%;
   margin-bottom: var(--gap-l);
-  border: 2px solid var(--card-bd);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   overflow: hidden;
   line-height: 0; /* collapse whitespace around img */
 }
@@ -647,10 +666,11 @@ h3 {
 
 .item-card {
   background: var(--secondary-bg);
-  border: 2px solid var(--card-bd);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius);
-  padding: var(--pad);
-  margin-bottom: var(--gap);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+  margin-bottom: 16px;
 }
 
 .item-card-header {
@@ -676,10 +696,11 @@ h3 {
 
 .weight-row {
   background: var(--secondary-bg);
-  border: 2px solid var(--card-bd);
+  border: 1px solid var(--card-bd);
   border-radius: var(--radius);
-  padding: var(--pad);
-  margin-bottom: var(--gap);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+  margin-bottom: 16px;
 }
 
 .weight-row label {
@@ -695,8 +716,8 @@ h3 {
   font-size: var(--base);
   color: var(--text);
   background: var(--bg);
-  border: 2px solid var(--card-bd);
-  border-radius: var(--radius);
+  border: 2px solid #1B1B1B;
+  border-radius: var(--radius-input);
   padding: 12px var(--pad);
   min-height: var(--tap);
 }
@@ -725,5 +746,5 @@ h3 {
   margin: var(--gap) 0;
   padding: 10px;
   background: var(--muted-bg);
-  border-radius: var(--radius);
+  border-radius: var(--radius-input);
 }
